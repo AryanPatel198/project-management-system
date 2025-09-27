@@ -1,2 +1,5 @@
 # project-management-system
-contributor : Aryan Patel
+
+Contributors:
+Zeel Rathod
+Aryan Patel
