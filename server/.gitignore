@@ -1,0 +1,19 @@
+# Dependency directories
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+.env
+.DS_Store
+.vscode/
+
+# Build artifacts
+dist/
+build/
+
+# IDE files (e.g., VS Code)
+.vscode/
