@@ -1,7 +1,7 @@
 // backend/src/middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
 import Admin from "../models/admin.js";
-import Guide from "../models/guide.js";
+// import Guide from "../models/guide.js";
 
 // ✅ Protect Admin
 export const protectAdmin = async (req, res, next) => {
