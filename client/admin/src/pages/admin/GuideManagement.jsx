@@ -97,7 +97,8 @@ function GuideManagement() {
     try {
       setLoading(true);
       const { data } = await guideAPI.getAll();
-      setGuides(data);
+      console.log(data);
+      setGuides(data.data);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to load guides.");
     } finally {

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // e.g. http://localhost:5000/api
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/admin",
 });
 
 // ✅ Add Authorization header automatically
@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
 
 export const authAPI = {
   login: async (payload) => {
-    const { data } = await api.post("/admin/login", payload);
+    const { data } = await api.post("/login", payload);
     // backend should return: { token, data: { ...admin } }
     // ✅ Save token for later requests
     localStorage.setItem("token", data.token);
@@ -25,12 +25,13 @@ export const authAPI = {
 
 // ✅ Guides API
 export const guideAPI = {
-  getAll: () => api.get("/guides"),
+  getAll: () => api.get("/get-all-guides"),
   getActive: () => api.get("/guides/active"), // Added for GroupManagement
-  add: (payload) => api.post("/guides", payload),
+  add: (payload) => api.post("/add-guide", payload),
   update: (id, payload) => api.patch(`/guides/${id}`, payload),
   delete: (id) => api.delete(`/guides/${id}`),
-  updateStatus: (id, status) => api.patch(`/guides/${id}/status`, { status }),
+  updateStatus: (id, status) =>
+    api.patch(`/new-guide-status/${id}`, { status }),
 };
 
 // ✅ Groups API

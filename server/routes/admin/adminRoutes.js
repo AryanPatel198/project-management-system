@@ -8,6 +8,9 @@ import {
   changePassword,
   getAdminProfile,
   updateAdminProfile,
+  getAllGuides,
+  createGuide,
+  updateGuideStatus,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -19,8 +22,10 @@ router.post("/login", loginAdmin);
 // POST /api/admin/register (optional for seeding first admin)
 router.post("/register", registerAdmin);
 
-// Forgot + Reset
+// Forgot
 router.post("/forgot-password", forgotPassword);
+
+// Reset;
 router.post("/reset-password", resetPassword);
 
 // Protected routes (require authentication)
@@ -34,5 +39,16 @@ router.put("/profile", updateAdminProfile);
 
 // Change password
 router.post("/change-password", changePassword);
+
+// Manage Guides apis
+
+// GET /api/admin/guides -> returns list of guides
+router.get("/get-all-guides", protectAdmin, getAllGuides);
+
+// POST /api/admin/add-guide
+router.post("/add-guide", protectAdmin, createGuide);
+
+// PATCH /api/admin/new-guide-status/:id
+router.patch("/new-guide-status/:id", protectAdmin, updateGuideStatus);
 
 export default router;

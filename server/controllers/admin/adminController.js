@@ -1,7 +1,10 @@
 // backend/src/controllers/adminController.js
-import Admin from "../../models/admin.js";
+// import sendEmail from "../../services/emailService.js";
 import jwt from "jsonwebtoken";
-import sendEmail from "../../services/emailService.js";
+import bcrypt from "bcrypt";
+import { sendEmail } from "../../services/emailService.js";
+import Admin from "../../models/admin.js";
+import Guide from "../../models/guide.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -177,5 +180,159 @@ export const changePassword = async (req, res) => {
     res.json({ message: "Password changed successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// controllers/admin/adminController.js
+export const getAllGuides = async (req, res) => {
+  try {
+    const guides = await Guide.find().select("-password -otp -otpExpiry");
+    res.status(200).json({
+      success: true,
+      count: guides.length,
+      data: guides,
+    });
+  } catch (error) {
+    console.error("Error fetching guides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch guides",
+    });
+  }
+};
+
+export const createGuide = async (req, res) => {
+  try {
+    const { name, expertise, email, phone, password } = req.body;
+
+    if (!name || !expertise || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be filled",
+      });
+    }
+
+    // Check if guide already exists
+    const existingGuide = await Guide.findOne({ email });
+    if (existingGuide) {
+      return res.status(409).json({
+        success: false,
+        message: "Guide already exists with this email",
+      });
+    }
+
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newGuide = await Guide.create({
+      name,
+      expertise,
+      email,
+      phone: phone || null,
+      password: hashedPassword,
+      status: "approved",
+    });
+
+    // Send welcome email with credentials
+    try {
+      await sendEmail({
+        to: newGuide.email,
+        type: "GUIDE_CREDENTIALS",
+        data: {
+          name: newGuide.name,
+          email: newGuide.email,
+          tempPassword: password,
+        },
+      });
+    } catch (emailErr) {
+      console.error("⚠️ Failed to send guide credentials:", emailErr.message);
+      // You could optionally notify admin here
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Guide created successfully",
+      data: {
+        id: newGuide._id,
+        name: newGuide.name,
+        email: newGuide.email,
+        expertise: newGuide.expertise,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error creating guide:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create guide",
+    });
+  }
+};
+
+// controllers/admin/adminController.js
+
+export const updateGuideStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // ✅ Validate input
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either 'approved' or 'rejected'",
+      });
+    }
+
+    // ✅ Find guide
+    const guide = await Guide.findById(id);
+    if (!guide) {
+      return res.status(404).json({
+        success: false,
+        message: "Guide not found",
+      });
+    }
+
+    // ✅ Update status
+    guide.status = status;
+    await guide.save();
+
+    // ✅ (Optional) Send email notification
+    try {
+      if (status === "approved") {
+        await sendEmail({
+          to: guide.email,
+          type: "GUIDE_APPROVED",
+          data: { name: guide.name },
+        });
+      } else if (status === "rejected") {
+        await sendEmail({
+          to: guide.email,
+          type: "GUIDE_REJECTED",
+          data: {
+            name: guide.name,
+            reason: "Admin's Decision",
+          },
+        });
+      }
+    } catch (emailErr) {
+      console.error("⚠️ Failed to send status update email:", emailErr.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Guide status updated to '${status}'`,
+      data: {
+        id: guide._id,
+        name: guide.name,
+        email: guide.email,
+        status: guide.status,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error updating guide status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update guide status",
+    });
   }
 };
