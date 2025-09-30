@@ -10,6 +10,7 @@ import {
   updateAdminProfile,
   getAllGuides,
   createGuide,
+  updateGuide,
   updateGuideStatus,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
@@ -47,6 +48,9 @@ router.get("/get-all-guides", protectAdmin, getAllGuides);
 
 // POST /api/admin/add-guide
 router.post("/add-guide", protectAdmin, createGuide);
+
+// ✅ PUT /api/admin/update-guide/:id
+router.put("/update-guide/:id", protectAdmin, updateGuide);
 
 // PATCH /api/admin/new-guide-status/:id
 router.patch("/new-guide-status/:id", protectAdmin, updateGuideStatus);

@@ -336,3 +336,40 @@ export const updateGuideStatus = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc   Update a guide's details (Admin only)
+ * @route  PUT /api/admin/update-guide/:id
+ * @access Private (Admin)
+ */
+export const updateGuide = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, expertise, email, phone, isActive } = req.body;
+
+    // 1️⃣ Find guide
+    const guide = await Guide.findById(id);
+    if (!guide) {
+      return res.status(404).json({ message: "Guide not found" });
+    }
+
+    // 2️⃣ Update fields (only if provided)
+    if (name) guide.name = name;
+    if (expertise) guide.expertise = expertise;
+    if (email) guide.email = email;
+    if (phone !== undefined) guide.phone = phone;
+    if (isActive !== undefined) guide.isActive = isActive;
+
+    // 3️⃣ Save updated guide
+    const updatedGuide = await guide.save();
+
+    res.status(200).json({
+      message: "Guide updated successfully",
+      guide: updatedGuide,
+    });
+  } catch (error) {
+    console.error("❌ Error updating guide:", error);
+    res.status(500).json({ message: "Server error while updating guide" });
+  }
+};
+

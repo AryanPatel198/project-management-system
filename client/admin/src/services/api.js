@@ -28,7 +28,7 @@ export const guideAPI = {
   getAll: () => api.get("/get-all-guides"),
   getActive: () => api.get("/guides/active"), // Added for GroupManagement
   add: (payload) => api.post("/add-guide", payload),
-  update: (id, payload) => api.patch(`/guides/${id}`, payload),
+  update: (id, payload) => api.put(`/update-guide/${id}`, payload),
   delete: (id) => api.delete(`/guides/${id}`),
   updateStatus: (id, status) =>
     api.patch(`/new-guide-status/${id}`, { status }),
