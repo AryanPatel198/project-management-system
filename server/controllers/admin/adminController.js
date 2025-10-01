@@ -6,6 +6,8 @@ import { sendEmail } from "../../services/emailService.js";
 import Admin from "../../models/admin.js";
 import Guide from "../../models/guide.js";
 import Group from "../../models/group.js";
+import Division from "../../models/division.js";
+import Student from "../../models/student.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -450,6 +452,72 @@ export const getGroupsByYear = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching groups",
+    });
+  }
+};
+
+/**
+ * GET /api/admin/get-divisions
+ * Fetch all divisions (with optional filters)
+ */
+export const getDivisions = async (req, res) => {
+  try {
+    const { course, year, status } = req.query;
+
+    // Build filter dynamically
+    const filter = {};
+    if (course) filter.course = course;
+    if (year) filter.year = Number(year);
+    if (status) filter.status = status;
+
+    const divisions = await Division.find(filter)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: divisions.length,
+      data: divisions,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching divisions:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching divisions",
+    });
+  }
+};
+
+/**
+ * GET /api/admin/get-group/:id
+ * Fetch detailed group info by ID
+ */
+export const getGroupById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const group = await Group.findById(id)
+      .populate("guide", "name email expertise") // fetch guide details
+      .populate("division", "course semester year status") // fetch division details
+      .populate("students", "studentName enrollmentNumber") // fetch student list
+      .exec();
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: group,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching group details:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching group details",
     });
   }
 };
