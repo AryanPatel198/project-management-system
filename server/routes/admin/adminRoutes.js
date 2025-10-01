@@ -12,6 +12,8 @@ import {
   createGuide,
   updateGuide,
   updateGuideStatus,
+  getActiveGuides,
+  getGroupsByYear,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -42,7 +44,6 @@ router.put("/profile", updateAdminProfile);
 router.post("/change-password", changePassword);
 
 // Manage Guides apis
-
 // GET /api/admin/guides -> returns list of guides
 router.get("/get-all-guides", protectAdmin, getAllGuides);
 
@@ -54,5 +55,14 @@ router.put("/update-guide/:id", protectAdmin, updateGuide);
 
 // PATCH /api/admin/new-guide-status/:id
 router.patch("/new-guide-status/:id", protectAdmin, updateGuideStatus);
+
+// GET /api/admin/active-guides
+router.get("/active-guides", protectAdmin, getActiveGuides);
+
+
+// Manage Groups
+
+// GET /api/admin/get-groups?year=2025
+router.get("/get-groups", protectAdmin, getGroupsByYear);
 
 export default router;

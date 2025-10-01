@@ -5,6 +5,7 @@ import bcrypt from "bcrypt";
 import { sendEmail } from "../../services/emailService.js";
 import Admin from "../../models/admin.js";
 import Guide from "../../models/guide.js";
+import Group from "../../models/group.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -373,3 +374,82 @@ export const updateGuide = async (req, res) => {
   }
 };
 
+// Get Active Status guides
+export const getActiveGuides = async (req, res) => {
+  try {
+    const guides = await Guide.find({
+      status: "approved",
+      isActive: true,
+    }).select("-password -otp -otpExpiry"); // exclude sensitive fields
+
+    res.status(200).json({
+      success: true,
+      count: guides.length,
+      data: guides,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching active guides:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching active guides",
+    });
+  }
+};
+
+/**
+ * GET /api/admin/get-groups?year=2025
+ * Fetch groups filtered by year (optional)
+ */
+export const getGroupsByYear = async (req, res) => {
+  try {
+    const { year } = req.query;
+
+    // Build filter dynamically
+    const filter = {};
+    if (year) {
+      filter.year = Number(year);
+    }
+
+    const groups = await Group.find(filter)
+      .populate("guide", "name email expertise phone") // include guide details
+      .exec();
+
+    // Format response for frontend consumption
+    const formattedGroups = groups.map((g) => ({
+      _id: g._id,
+      name: g.name,
+      year: g.year,
+      projectTitle: g.projectTitle,
+      projectDescription: g.projectDescription,
+      projectTechnology: g.projectTechnology,
+      status: g.status,
+      guide: g.guide
+        ? {
+            _id: g.guide._id,
+            name: g.guide.name,
+            email: g.guide.email,
+            expertise: g.guide.expertise,
+            phone: g.guide.phone,
+          }
+        : null,
+      members:
+        g.members?.map((m) => ({
+          name: m.name || m.studentName || "N/A",
+          enrollment: m.enrollment || m.enrollmentNumber || "N/A",
+          className: m.className || "N/A",
+        })) || [],
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedGroups.length,
+      data: formattedGroups,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching groups by year:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching groups",
+    });
+  }
+};
