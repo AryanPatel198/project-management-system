@@ -1,25 +1,64 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { BookOpen, GraduationCap, Users, UserPlus } from 'lucide-react';
+import { studentPublicAPI } from '../services/api';
 
 function Register() {
   const navigate = useNavigate();
   const [enrollmentNumber, setEnrollmentNumber] = useState('');
   const [name, setName] = useState('');
   const [mobileNo, setMobileNo] = useState('');
+  const [email, setEmail] = useState('');
   const [division, setDivision] = useState('');
+  const [divisions, setDivisions] = useState([]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [enrollmentOptions, setEnrollmentOptions] = useState(['ENR001', 'ENR002', 'ENR003', 'ENR004', 'ENR005']); // Dummy data
+  const [enrollmentOptions, setEnrollmentOptions] = useState([]);
 
-  const handleRegister = (e) => {
+  useEffect(() => {
+    const loadDivisions = async () => {
+      try {
+        const list = await studentPublicAPI.getDivisions();
+        setDivisions(list.map(d => ({ id: d._id, label: `${d.course} Sem ${d.semester} - ${d.year}` })));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadDivisions();
+  }, []);
+
+  useEffect(() => {
+    const loadEnrollments = async () => {
+      try {
+        setEnrollmentNumber('');
+        if (!division) { setEnrollmentOptions([]); return; }
+        const list = await studentPublicAPI.getPendingEnrollments(division);
+        setEnrollmentOptions(list.map(s => s.enrollmentNumber));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadEnrollments();
+  }, [division]);
+
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Handle registration logic here
-    // Remove the selected enrollment number from the options
-    setEnrollmentOptions(enrollmentOptions.filter(option => option !== enrollmentNumber));
-    navigate('/login'); // Redirect to login after registration
+    if (!division || !enrollmentNumber || !name || !password || password !== confirmPassword) return;
+    try {
+      await studentPublicAPI.register({
+        divisionId: division,
+        enrollmentNumber,
+        name,
+        phone: mobileNo,
+        email,
+        password,
+      });
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -48,6 +87,7 @@ function Register() {
               <div className="flex items-center">
                 <BookOpen size={24} className="text-white/80 mr-3" />
                 <span className="text-white/90">Academic Excellence</span>
+              
               </div>
             </div>
           </div>
@@ -81,14 +121,28 @@ function Register() {
                 className="w-full p-4 bg-white/10 text-white rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
                <Input
-                id="Course"
-                label="Select Course"
-                type="text"
-                placeholder="select your course"
-                value={division}
-                onChange={(e) => setDivision(e.target.value)}
+                id="email"
+                label="Email"
+                type="email"
+                placeholder="Enter your email (optional)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-4 bg-white/10 text-white rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
+               <div className="mb-4">
+                <label htmlFor="division" className="block text-white text-sm font-medium mb-2">Select Division</label>
+                <select
+                  id="division"
+                  value={division}
+                  onChange={(e) => setDivision(e.target.value)}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200 placeholder-white/60"
+                >
+                  <option value="">Select your Division</option>
+                  {divisions.map(d => (
+                    <option key={d.id} value={d.id}>{d.label}</option>
+                  ))}
+                </select>
+              </div>
               <Input
                 id="enrollmentNumber"
                 label="Enrollment Number"

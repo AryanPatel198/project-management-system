@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 const studentSchema = new mongoose.Schema(
   {
@@ -48,6 +49,18 @@ const studentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Hash password before saving
+studentSchema.pre("save", async function (next) {
+  if (!this.isModified("password") || !this.password) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Compare password helper
+studentSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password || "");
+};
 
 const Student = mongoose.model("Student", studentSchema);
 
