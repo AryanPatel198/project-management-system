@@ -103,84 +103,74 @@ function GroupManagement() {
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  // Removed selectedClassFilter and replaced it with a dummy value, as the API doesn't support it
-  // const [selectedClassFilter, setSelectedClassFilter] = useState("All");
   const [selectedYearFilter, setSelectedYearFilter] = useState(
     new Date().getFullYear().toString()
   );
   const [availableStudents, setAvailableStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Replace with your actual admin token retrieval logic
+  // Token and API base URL
   const adminToken = localStorage.getItem("token");
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+  ).replace(/\/admin$/, "");
 
-  // API base URL
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-  // Fetch all initial data and groups with filters
+  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
+      if (!adminToken) {
+        setErrorMessage("No authentication token found. Please log in.");
+        setTimeout(() => setErrorMessage(""), 3000);
+        return;
+      }
+      setLoading(true);
       try {
         const headers = { Authorization: `Bearer ${adminToken}` };
 
-        // Fetch guides
+        // Fetch active guides
         const guidesResponse = await axios.get(
-          `${API_BASE_URL}/active-guides`,
+          `${API_BASE_URL}/admin/active-guides`,
           { headers }
         );
-        setGuides(
-          Array.isArray(guidesResponse.data) ? guidesResponse.data : []
-        );
+        setGuides(guidesResponse.data.data || []);
 
-        // Fetch groups based on selected filters (API only supports year filter)
-        const groupsResponse = await axios.get(`${API_BASE_URL}/get-groups`, {
-          headers,
-          params: {
-            // Only send year if filter is not "All Years"
-            year:
-              selectedYearFilter !== "All Years"
-                ? Number(selectedYearFilter)
-                : undefined,
-          },
-        });
-
-        // Handle the response data format (assuming it's an array or wrapped)
-        if (Array.isArray(groupsResponse.data)) {
-          setGroups(groupsResponse.data);
-        } else if (
-          groupsResponse.data?.success &&
-          Array.isArray(groupsResponse.data.data)
-        ) {
-          // Handle case where API wraps data in { success: true, data: [...] }
-          setGroups(groupsResponse.data.data);
-        } else {
-          setGroups([]);
-          console.warn(
-            "No groups found or server returned unexpected response format."
-          );
-        }
-
-        // Fetch divisions (assuming this endpoint is correct)
-        const divisionsResponse = await axios.get(
-          `${API_BASE_URL}/get-divisions`,
+        // Fetch groups (with year filter if not "All Years")
+        const groupsParams =
+          selectedYearFilter === "All Years"
+            ? {}
+            : { year: Number(selectedYearFilter) };
+        const groupsResponse = await axios.get(
+          `${API_BASE_URL}/admin/get-groups`,
           {
             headers,
+            params: groupsParams,
           }
         );
-        setDivisions(divisionsResponse.data.data);
+        setGroups(groupsResponse.data.data || []);
+
+        // Fetch divisions
+        const divisionsResponse = await axios.get(
+          `${API_BASE_URL}/admin/get-divisions`,
+          { headers }
+        );
+        setDivisions(divisionsResponse.data.data || []);
       } catch (error) {
-        setErrorMessage("Failed to fetch data. Please try again.");
+        const errorMsg =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch data.";
+        setErrorMessage(errorMsg);
         setTimeout(() => setErrorMessage(""), 3000);
         console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
-  }, [selectedYearFilter, adminToken, API_BASE_URL]); // Removed selectedClassFilter from dependency array
+  }, [selectedYearFilter, adminToken, API_BASE_URL]);
 
-  // Filter options
-  // NOTE: The class/course filter array is simplified since the current backend API
-  // only supports filtering by year (`getGroupsByYear`).
-  // const allClassNames = ["All"];
+  // Filter options (year only, as backend supports only year filter)
   const allYears = [
     "All Years",
     ...new Set(divisions.map((division) => division.year.toString())),
@@ -188,30 +178,23 @@ function GroupManagement() {
     .sort()
     .reverse();
 
-  // Get active guides
-  const activeGuides = guides.filter(
-    (guide) => guide.status === "approved" && guide.isActive === true
-  );
-
-  // Get available students for a group
+  // Get available students (unassigned to any group)
   const getAvailableStudents = async () => {
-    if (!selectedGroup) return [];
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
-      // NOTE: This call might still need adjustment if the backend needs course/semester info for empty groups.
-      // The current implementation attempts to use the group details for filtering.
       const response = await axios.get(
-        `${API_BASE_URL}/get-students-by-group/${selectedGroup._id}`,
-        // GET /api/admin/get-students-by-group/:id
-        // router.get(":id", protectAdmin, getStudentsByGroup);
+        `${API_BASE_URL}/admin/get-available-students`,
         { headers }
       );
-      return response.data;
+      return response.data.data || [];
     } catch (error) {
-      setErrorMessage("Failed to fetch available students.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch available students.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error fetching available students:", error);
-      console.error("Error response:", error.response?.data);
       return [];
     }
   };
@@ -225,14 +208,16 @@ function GroupManagement() {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       const response = await axios.get(
-        `${API_BASE_URL}/get-group/${group._id}`,
-        {
-          headers,
-        }
+        `${API_BASE_URL}/admin/get-group/${group._id}`,
+        { headers }
       );
       setSelectedGroup(response.data.data);
     } catch (error) {
-      setErrorMessage("Failed to fetch group details.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch group details.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error fetching group details:", error);
     }
@@ -247,34 +232,49 @@ function GroupManagement() {
   };
 
   const openChangeGuideModal = () => {
-    setNewGuide(selectedGroup.guide.name);
+    setNewGuide(selectedGroup.guide?.name || "");
     setShowChangeGuideModal(true);
   };
 
   const handleSaveGuideChange = async () => {
+    if (!newGuide) {
+      setErrorMessage("Please select a guide.");
+      setTimeout(() => setErrorMessage(""), 3000);
+      return;
+    }
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const guideId = guides.find((guide) => guide.name === newGuide)?._id;
+      const selectedGuideObj = guides.find((guide) => guide.name === newGuide);
+      if (!selectedGuideObj) {
+        setErrorMessage("Selected guide not found.");
+        setTimeout(() => setErrorMessage(""), 3000);
+        return;
+      }
       await axios.put(
-        `${API_BASE_URL}/groups/${selectedGroup._id}`,
-        { guide: guideId },
+        `${API_BASE_URL}/admin/update-group/${selectedGroup._id}`,
+        { guide: selectedGuideObj._id },
         { headers }
       );
+      // Update local state
       setGroups(
         groups.map((group) =>
           group._id === selectedGroup._id
-            ? { ...group, guide: { name: newGuide } }
+            ? { ...group, guide: selectedGuideObj }
             : group
         )
       );
-      setSelectedGroup((prev) => ({ ...prev, guide: { name: newGuide } }));
+      setSelectedGroup((prev) => ({ ...prev, guide: selectedGuideObj }));
       setShowChangeGuideModal(false);
       setSuccessMessage(
-        `Guide for ${selectedGroup.name} changed successfully!`
+        `Guide for ${selectedGroup.name} changed to ${newGuide}!`
       );
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
-      setErrorMessage("Failed to change guide.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to change guide.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error changing guide:", error);
     }
@@ -283,17 +283,21 @@ function GroupManagement() {
   const handleDeleteGroup = async () => {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const deletedGroupName = selectedGroup.name;
-      await axios.delete(`${API_BASE_URL}/groups/${selectedGroup._id}`, {
-        headers,
-      });
+      await axios.delete(
+        `${API_BASE_URL}/admin/delete-group/${selectedGroup._id}`,
+        { headers }
+      );
       setGroups(groups.filter((group) => group._id !== selectedGroup._id));
       setSelectedGroup(null);
       setShowDeleteModal(false);
-      setSuccessMessage(`Group "${deletedGroupName}" deleted successfully!`);
+      setSuccessMessage(`Group "${selectedGroup.name}" deleted successfully!`);
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
-      setErrorMessage("Failed to delete group.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to delete group.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error deleting group:", error);
     }
@@ -301,37 +305,37 @@ function GroupManagement() {
 
   const handleAddStudent = async () => {
     if (selectedGroup.members.length >= 4) {
-      setSuccessMessage("Cannot add more than 4 students to a group!");
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setErrorMessage("Cannot add more than 4 students to a group!");
+      setTimeout(() => setErrorMessage(""), 3000);
       return;
     }
     if (!newStudent) {
-      setSuccessMessage("Please select a student to add!");
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setErrorMessage("Please select a student to add!");
+      setTimeout(() => setErrorMessage(""), 3000);
       return;
     }
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       const studentData = availableStudents.find(
-        // Use availableStudents state
         (s) => s.enrollmentNumber === newStudent
       );
       if (!studentData) {
-        setSuccessMessage("Selected student is not available!");
-        setTimeout(() => setSuccessMessage(""), 3000);
+        setErrorMessage("Selected student is not available!");
+        setTimeout(() => setErrorMessage(""), 3000);
         return;
       }
       const newMember = {
-        name: studentData.name,
+        name: studentData.studentName,
         enrollment: studentData.enrollmentNumber,
-        className: studentData.className,
+        className: `${studentData.division.course} ${studentData.division.semester}`,
       };
       const updatedMembers = [...selectedGroup.members, newMember];
       await axios.put(
-        `${API_BASE_URL}/groups/${selectedGroup._id}`,
+        `${API_BASE_URL}/admin/update-group/${selectedGroup._id}`,
         { members: updatedMembers },
         { headers }
       );
+      // Update local state
       setGroups(
         groups.map((group) =>
           group._id === selectedGroup._id
@@ -343,11 +347,15 @@ function GroupManagement() {
       setShowAddStudentModal(false);
       setNewStudent("");
       setSuccessMessage(
-        `Student ${studentData.name} added to ${selectedGroup.name}!`
+        `Student ${studentData.studentName} added to ${selectedGroup.name}!`
       );
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
-      setErrorMessage("Failed to add student.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to add student.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error adding student:", error);
     }
@@ -355,8 +363,8 @@ function GroupManagement() {
 
   const handleDeleteStudent = async () => {
     if (selectedGroup.members.length <= 3) {
-      setSuccessMessage("Cannot remove student: Minimum 3 students required!");
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setErrorMessage("Cannot remove student: Minimum 3 students required!");
+      setTimeout(() => setErrorMessage(""), 3000);
       setShowDeleteStudentModal(false);
       return;
     }
@@ -366,10 +374,11 @@ function GroupManagement() {
         (m) => m.enrollment !== studentToDelete.enrollment
       );
       await axios.put(
-        `${API_BASE_URL}/groups/${selectedGroup._id}`,
+        `${API_BASE_URL}/admin/update-group/${selectedGroup._id}`,
         { members: updatedMembers },
         { headers }
       );
+      // Update local state
       setGroups(
         groups.map((group) =>
           group._id === selectedGroup._id
@@ -384,42 +393,31 @@ function GroupManagement() {
       );
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
-      setErrorMessage("Failed to remove student.");
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to remove student.";
+      setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
       console.error("Error removing student:", error);
     }
   };
 
-  // Fetch available students when modal opens
+  // Open Add Student Modal and fetch available students
   const handleOpenAddStudentModal = async () => {
     setShowAddStudentModal(true);
     setNewStudent("");
-    setAvailableStudents([]);
-
-    if (selectedGroup) {
-      try {
-        // const headers = { Authorization: `Bearer ${adminToken}` };
-
-        // This is a complex logic that might be simplified if the backend
-        // can determine context from selectedGroup._id. Assuming the backend handles
-        // finding the appropriate students for the given group's context.
-        const students = await getAvailableStudents();
-        console.log(students);
-        setAvailableStudents(students.students);
-      } catch (error) {
-        console.error("Error fetching available students:", error);
-        setErrorMessage(
-          "Failed to fetch available students. Please try again."
-        );
-        setTimeout(() => setErrorMessage(""), 3000);
-      }
+    try {
+      const students = await getAvailableStudents();
+      setAvailableStudents(students);
+    } catch (error) {
+      // Error handled in getAvailableStudents
     }
   };
 
   // Render details view
   const renderDetailsView = () => {
-    const guideDetails = getGuideDetails(selectedGroup.guide.name);
-    // eslint-disable-next-line no-unused-vars
+    const guideDetails = getGuideDetails(selectedGroup.guide?.name || "");
     const hasMembers =
       selectedGroup.members && selectedGroup.members.length > 0;
 
@@ -492,8 +490,7 @@ function GroupManagement() {
           <div className="bg-light-glass backdrop-blur-sm p-6 rounded-xl shadow-neumorphic border border-white/30">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-accent-teal">
-                {" "}
-                Guide Details{" "}
+                Guide Details
               </h2>
               <button
                 onClick={openChangeGuideModal}
@@ -510,7 +507,7 @@ function GroupManagement() {
                   className="mr-3 text-accent-teal animate-icon-pulse"
                 />
                 <p className="font-semibold">Name:</p>
-                <span className="ml-2">{guideDetails.name}</span>
+                <span className="ml-2">{guideDetails.name || "N/A"}</span>
               </div>
               <div className="flex items-center">
                 <Code
@@ -518,7 +515,7 @@ function GroupManagement() {
                   className="mr-3 text-accent-teal animate-icon-pulse"
                 />
                 <p className="font-semibold">Expertise:</p>
-                <span className="ml-2">{guideDetails.expertise}</span>
+                <span className="ml-2">{guideDetails.expertise || "N/A"}</span>
               </div>
               <div className="flex items-center">
                 <Smartphone
@@ -526,7 +523,7 @@ function GroupManagement() {
                   className="mr-3 text-accent-teal animate-icon-pulse"
                 />
                 <p className="font-semibold">Mobile:</p>
-                <span className="ml-2">{guideDetails.mobile}</span>
+                <span className="ml-2">{guideDetails.phone || "N/A"}</span>
               </div>
             </div>
           </div>
@@ -535,12 +532,16 @@ function GroupManagement() {
         <div className="bg-light-glass backdrop-blur-sm p-6 rounded-xl shadow-neumorphic border border-white/30 mt-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-accent-teal">
-              {" "}
-              Group Members{" "}
+              Group Members
             </h2>
             <button
               onClick={handleOpenAddStudentModal}
-              className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-500 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once hover:bg-opacity-90 hover:scale-105"
+              disabled={!hasMembers || selectedGroup.members.length >= 4}
+              className={`flex items-center py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
+                hasMembers && selectedGroup.members.length < 4
+                  ? "bg-gradient-to-r from-accent-teal to-cyan-500 text-white hover:bg-opacity-90 hover:scale-105"
+                  : "bg-gray-600/80 text-white/70 cursor-not-allowed"
+              }`}
               aria-label="Add student"
             >
               <Plus size={20} className="mr-2" /> Add Student
@@ -559,14 +560,12 @@ function GroupManagement() {
                   />
                   <div className="flex flex-col">
                     <span className="font-semibold text-lg text-white">
-                      {" "}
-                      {member.name}{" "}
+                      {member.name}
                     </span>
-                    <div className="text-sm text-white/80">
-                      <span className="mr-4">
-                        Enrollment: {member.enrollment}
-                      </span>
-                      <span>Class: {member.className}</span>
+                    <div className="text-sm text-white/80 flex items-center">
+                      <Hash size={16} className="mr-1 text-accent-teal" />
+                      <span>{member.enrollment}</span>
+                      <span className="ml-4">{member.className}</span>
                     </div>
                   </div>
                 </div>
@@ -575,108 +574,133 @@ function GroupManagement() {
                     setStudentToDelete(member);
                     setShowDeleteStudentModal(true);
                   }}
-                  className="text-red-400 hover:text-red-500 transition duration-200 p-2 rounded-full hover:bg-white/10"
+                  className="text-red-400 hover:text-red-300 transition-colors duration-200"
                   aria-label={`Remove student ${member.name}`}
                 >
-                  <Trash2 size={20} />
+                  <Trash2 size={24} className="animate-icon-pulse" />
                 </button>
               </div>
             ))}
           </div>
         </div>
-        {/* Modals for Guide Change, Delete Group, Add Student, Delete Student */}
+
+        {/* Change Guide Modal */}
         {showChangeGuideModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-dark-glass p-8 rounded-xl shadow-2xl border border-white/30 w-full max-w-md animate-zoom-in">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowChangeGuideModal(false)}
-                  className="text-white/70 hover:text-white transition"
-                  aria-label="Close change guide modal"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <h2 className="text-2xl font-bold text-accent-teal mb-6 text-center tracking-tight">
-                Change Guide for {selectedGroup.name}
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-light-glass backdrop-blur-sm p-8 rounded-2xl shadow-neumorphic border border-white/20 w-full max-w-sm relative transform transition-all duration-200 scale-100 hover:scale-102">
+              <button
+                onClick={() => setShowChangeGuideModal(false)}
+                className="absolute top-4 right-4 text-white/70 hover:text-white transition duration-200"
+                aria-label="Close modal"
+              >
+                <X size={24} className="animate-icon-pulse" />
+              </button>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight">
+                Change Guide
               </h2>
-              <FilterDropdown
-                title="Select New Guide"
-                options={activeGuides.map((guide) => guide.name)}
-                selected={newGuide}
-                onSelect={setNewGuide}
-                className="mb-6 w-full"
-              />
-              <div className="flex justify-center gap-4">
+              <label
+                htmlFor="new-guide-select"
+                className="block text-white text-sm font-semibold mb-2"
+              >
+                Select a new guide
+              </label>
+              <div className="relative">
+                <select
+                  id="new-guide-select"
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-200 shadow-neumorphic backdrop-blur-sm appearance-none cursor-pointer pr-8"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300b8d4'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.5rem center",
+                    backgroundSize: "1.5em",
+                  }}
+                  value={newGuide}
+                  onChange={(e) => setNewGuide(e.target.value)}
+                >
+                  <option value="">Select a guide</option>
+                  {guides.map((guide) => (
+                    <option key={guide._id} value={guide.name}>
+                      {guide.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-4 mt-6">
                 <button
+                  type="button"
                   onClick={() => setShowChangeGuideModal(false)}
                   className="flex items-center bg-gray-600/80 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once"
-                  aria-label="Cancel change guide"
+                  aria-label="Cancel changing guide"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveGuideChange}
                   disabled={!newGuide}
-                  className={`flex items-center text-white py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
-                    newGuide
-                      ? "bg-gradient-to-r from-accent-teal to-cyan-500 hover:bg-opacity-90 hover:scale-105"
-                      : "bg-gray-400/50 cursor-not-allowed"
-                  }`}
-                  aria-label="Save new guide"
+                  className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-500 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Change guide"
                 >
-                  Save Change
+                  Change
                 </button>
               </div>
             </div>
           </div>
         )}
 
+        {/* Add Student Modal */}
         {showAddStudentModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-dark-glass p-8 rounded-xl shadow-2xl border border-white/30 w-full max-w-md animate-zoom-in">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowAddStudentModal(false)}
-                  className="text-white/70 hover:text-white transition"
-                  aria-label="Close add student modal"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-              <h2 className="text-2xl font-bold text-accent-teal mb-6 text-center tracking-tight">
-                Add Student to {selectedGroup.name}
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-light-glass backdrop-blur-sm p-8 rounded-2xl shadow-neumorphic border border-white/20 w-full max-w-sm relative transform transition-all duration-200 scale-100 hover:scale-102">
+              <button
+                onClick={() => setShowAddStudentModal(false)}
+                className="absolute top-4 right-4 text-white/70 hover:text-white transition duration-200"
+                aria-label="Close modal"
+              >
+                <X size={24} className="animate-icon-pulse" />
+              </button>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight">
+                Add Student
               </h2>
-              {selectedGroup.members.length >= 4 ? (
-                <p className="text-red-400 text-center mb-6 font-semibold">
-                  Group is full (Max 4 students).
-                </p>
-              ) : availableStudents.length === 0 ? (
-                <p className="text-white/70 text-center mb-6">
-                  No unassigned students available for this group's course/year.
-                </p>
-              ) : (
-                <FilterDropdown
-                  title="Select Student"
-                  options={availableStudents.map(
-                    (student) => `${student.name} (${student.enrollmentNumber})`
-                  )}
-                  selected={
-                    newStudent
-                      ? availableStudents.find(
-                          (s) => s.enrollmentNumber === newStudent
-                        )?.name
-                      : ""
-                  }
-                  onSelect={(option) => {
-                    const enrollment = option.match(/\(([^)]+)\)/)?.[1];
-                    setNewStudent(enrollment);
+              <label
+                htmlFor="new-student-select"
+                className="block text-white text-sm font-semibold mb-2"
+              >
+                Select a student
+              </label>
+              <div className="relative">
+                <select
+                  id="new-student-select"
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-200 shadow-neumorphic backdrop-blur-sm appearance-none cursor-pointer pr-8"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300b8d4'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.5rem center",
+                    backgroundSize: "1.5em",
                   }}
-                  className="mb-6 w-full"
-                />
-              )}
-              <div className="flex justify-center gap-4">
+                  value={newStudent}
+                  onChange={(e) => setNewStudent(e.target.value)}
+                >
+                  <option value="">Select a student</option>
+                  {availableStudents.length > 0 ? (
+                    availableStudents.map((student) => (
+                      <option
+                        key={student._id}
+                        value={student.enrollmentNumber}
+                      >
+                        {student.studentName} ({student.enrollmentNumber})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>
+                      No eligible students available
+                    </option>
+                  )}
+                </select>
+              </div>
+              <div className="flex justify-end gap-4 mt-6">
                 <button
+                  type="button"
                   onClick={() => setShowAddStudentModal(false)}
                   className="flex items-center bg-gray-600/80 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once"
                   aria-label="Cancel adding student"
@@ -684,51 +708,44 @@ function GroupManagement() {
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleAddStudent}
                   disabled={!newStudent || selectedGroup.members.length >= 4}
-                  className={`flex items-center text-white py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
-                    newStudent && selectedGroup.members.length < 4
-                      ? "bg-gradient-to-r from-accent-teal to-cyan-500 hover:bg-opacity-90 hover:scale-105"
-                      : "bg-gray-400/50 cursor-not-allowed"
-                  }`}
+                  className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-500 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Add student"
                 >
-                  Add Student
+                  Add
                 </button>
               </div>
             </div>
           </div>
         )}
 
+        {/* Delete Student Confirmation Modal */}
         {showDeleteStudentModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-dark-glass p-8 rounded-xl shadow-2xl border border-white/30 w-full max-w-md animate-zoom-in">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowDeleteStudentModal(false)}
-                  className="text-white/70 hover:text-white transition"
-                  aria-label="Close delete student modal"
-                >
-                  <X size={24} />
-                </button>
-              </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-light-glass backdrop-blur-sm p-8 rounded-2xl shadow-neumorphic border border-white/20 w-full max-w-sm relative transform transition-all duration-200 scale-100 hover:scale-102">
+              <button
+                onClick={() => setShowDeleteStudentModal(false)}
+                className="absolute top-4 right-4 text-white/70 hover:text-white transition duration-200"
+                aria-label="Close modal"
+              >
+                <X size={24} className="animate-icon-pulse" />
+              </button>
               <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight">
                 Confirm Removal
               </h2>
-              {selectedGroup.members.length <= 3 ? (
-                <p className="text-red-400 text-center mb-6 font-semibold">
-                  Cannot remove student: Minimum 3 students required in the
-                  group.
-                </p>
-              ) : (
-                <p className="text-white/80 text-center mb-6">
-                  Are you sure you want to remove{" "}
-                  <span className="font-semibold text-accent-teal">
-                    "{studentToDelete?.name}"
-                  </span>{" "}
-                  from the group?
-                </p>
-              )}
+              <p className="text-white/80 text-center mb-6">
+                Are you sure you want to remove{" "}
+                <span className="font-semibold text-accent-teal">
+                  {studentToDelete?.name}
+                </span>{" "}
+                from{" "}
+                <span className="font-semibold text-accent-teal">
+                  {selectedGroup.name}
+                </span>
+                ? This action cannot be undone.
+              </p>
               <div className="flex justify-center gap-4 mt-6">
                 <button
                   onClick={() => setShowDeleteStudentModal(false)}
@@ -740,11 +757,7 @@ function GroupManagement() {
                 <button
                   onClick={handleDeleteStudent}
                   disabled={selectedGroup.members.length <= 3}
-                  className={`flex items-center py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
-                    selectedGroup.members.length > 3
-                      ? "bg-red-500/80 hover:bg-red-600 hover:scale-105 text-white"
-                      : "bg-gray-400/50 cursor-not-allowed text-gray-700"
-                  }`}
+                  className="flex items-center bg-red-500/80 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-red-600 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Remove student"
                 >
                   Remove
@@ -754,18 +767,17 @@ function GroupManagement() {
           </div>
         )}
 
+        {/* Delete Group Confirmation Modal */}
         {showDeleteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-dark-glass p-8 rounded-xl shadow-2xl border border-white/30 w-full max-w-md animate-zoom-in">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="text-white/70 hover:text-white transition"
-                  aria-label="Close delete group modal"
-                >
-                  <X size={24} />
-                </button>
-              </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-light-glass backdrop-blur-sm p-8 rounded-2xl shadow-neumorphic border border-white/20 w-full max-w-sm relative transform transition-all duration-200 scale-100 hover:scale-102">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="absolute top-4 right-4 text-white/70 hover:text-white transition duration-200"
+                aria-label="Close modal"
+              >
+                <X size={24} className="animate-icon-pulse" />
+              </button>
               <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight">
                 Confirm Deletion
               </h2>
@@ -801,123 +813,136 @@ function GroupManagement() {
 
   // Render list view
   const renderListView = () => {
-    // Determine the groups to display based on filters
-    const displayedGroups = groups.filter((group) => {
-      // Filtering is primarily done on the API side now, but keep this for client-side safety/consistency if initial data fetch is "All Years"
-      const yearMatches =
-        selectedYearFilter === "All Years" ||
-        group.year.toString() === selectedYearFilter;
-
-      // Class filtering is removed as per API constraint
-
-      return yearMatches;
-    });
-
     return (
       <div className="w-full max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <button
             onClick={handleBack}
             className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-500 text-white py-2 px-4 sm:px-3 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once"
-            aria-label="Back to admin dashboard"
+            aria-label="Back to dashboard"
           >
-            <ChevronLeft size={20} className="mr-2" /> Dashboard
+            <ChevronLeft size={20} className="mr-2" /> Back to Dashboard
           </button>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg flex-grow text-center tracking-tight">
-            Group Management
+            Manage Groups
           </h1>
-          {/* Placeholder for future "Create Group" button */}
-          <div className="w-24 sm:w-40"></div>
+          <div className="w-[200px]"></div> {/* Spacer for alignment */}
         </div>
 
-        {/* Filters */}
-        <div className="flex space-x-4 mb-8 justify-center">
-          {/* Removed Class Filter */}
+        <div className="flex flex-wrap gap-4 mb-6 justify-center">
           <FilterDropdown
-            title="Filter by Year"
+            title="Years"
             options={allYears}
             selected={selectedYearFilter}
             onSelect={setSelectedYearFilter}
-            className="w-40"
           />
-          {/* <FilterDropdown
-            title="Filter by Class"
-            options={allClassNames}
-            selected={selectedClassFilter}
-            onSelect={setSelectedClassFilter}
-            className="w-40"
-          /> */}
         </div>
 
-        {/* Messages */}
-        {successMessage && (
-          <div className="bg-green-500/20 text-green-300 border border-green-500 p-4 rounded-lg mb-6 text-center shadow-neumorphic animate-fade-in-down">
-            {successMessage}
-          </div>
-        )}
-        {errorMessage && (
-          <div className="bg-red-500/20 text-red-300 border border-red-500 p-4 rounded-lg mb-6 text-center shadow-neumorphic animate-fade-in-down">
-            {errorMessage}
-          </div>
-        )}
-
-        {/* Group List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedGroups.length > 0 ? (
-            displayedGroups.map((group) => (
+        {loading ? (
+          <p className="text-white/70 text-center col-span-full py-8 text-lg">
+            Loading groups...
+          </p>
+        ) : groups.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groups.map((group, index) => (
               <div
                 key={group._id}
-                className="bg-light-glass backdrop-blur-sm p-6 rounded-xl shadow-neumorphic border border-white/30 hover:shadow-neumorphic-hover transition duration-300 cursor-pointer flex flex-col justify-between animate-fade-in-up"
                 onClick={() => handleViewDetails(group)}
+                className="bg-light-glass backdrop-blur-sm p-6 rounded-xl shadow-neumorphic border border-white/30 flex flex-col justify-between cursor-pointer hover:scale-[1.02] hover:bg-white/20 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: `${index * 0.15}s` }}
+                aria-label={`View details for ${group.name}`}
               >
                 <div>
-                  <h2 className="text-2xl font-bold text-accent-teal mb-3 truncate">
-                    {group.name}
-                  </h2>
-                  <p className="text-white/80 flex items-center mb-2">
-                    <BookOpen size={16} className="mr-2 text-cyan-400" />
-                    <span className="font-semibold mr-1">Project:</span>
-                    <span className="truncate">{group.projectTitle}</span>
-                  </p>
-                  <p className="text-white/80 flex items-center mb-2">
-                    <User size={16} className="mr-2 text-cyan-400" />
-                    <span className="font-semibold mr-1">Guide:</span>
-                    <span>{group.guide.name}</span>
-                  </p>
-                  <p className="text-white/80 flex items-center mb-2">
-                    <Hash size={16} className="mr-2 text-cyan-400" />
-                    <span className="font-semibold mr-1">Members:</span>
-                    <span>{group.members.length}</span>
-                  </p>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewDetails(group);
-                    }}
-                    className="flex items-center text-white bg-accent-teal/80 hover:bg-accent-teal px-3 py-1 rounded-lg font-medium transition duration-200"
-                    aria-label={`View details for group ${group.name}`}
-                  >
-                    View Details
-                  </button>
+                  <div className="flex items-center text-xl font-bold text-accent-teal mb-2">
+                    <Users size={24} className="mr-3 animate-icon-pulse" />
+                    <span className="text-white">{group.name}</span>
+                  </div>
+                  <div className="space-y-2 text-white/90">
+                    <div className="flex items-center">
+                      <BookOpen
+                        size={20}
+                        className="mr-3 text-accent-teal animate-icon-pulse"
+                      />
+                      <p className="font-semibold">Project Title:</p>
+                      <span className="ml-2">{group.projectTitle}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <User
+                        size={20}
+                        className="mr-3 text-accent-teal animate-icon-pulse"
+                      />
+                      <p className="font-semibold">Guide:</p>
+                      <span className="ml-2">{group.guide?.name || "N/A"}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="md:col-span-2 lg:col-span-3 text-center py-10 bg-light-glass backdrop-blur-sm p-6 rounded-xl shadow-neumorphic border border-white/30">
-              <p className="text-xl text-white/80">
-                No groups found for the selected filter(s).
-              </p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-white/70 text-center col-span-full py-8 text-lg">
+            No groups found.
+          </p>
+        )}
       </div>
     );
   };
 
+  // Main render
   return (
-    <div className="min-h-screen bg-dark-bg p-4 sm:p-8">
+    <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 bg-gradient-to-br from-gray-900 to-teal-900 font-sans text-white">
+      <style>
+        {`
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes pulse-once {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+          }
+          @keyframes icon-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.6s ease-out;
+          }
+          .animate-pulse-once {
+            animation: pulse-once 0.5s ease-in-out;
+          }
+          .animate-icon-pulse {
+            animation: icon-pulse 2s infinite ease-in-out;
+          }
+          .bg-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Ccircle fill='%2300b8d4' cx='100' cy='100' r='5'/%3E%3Ccircle fill='%2300b8d4' cx='700' cy='200' r='4'/%3E%3Ccircle fill='%2300b8d4' cx='300' cy='600' r='6'/%3E%3Ccircle fill='%2300b8d4' cx='500' cy='400' r='5'/%3E%3C/svg%3E") repeat;
+            opacity: 0.1;
+          }
+          .guide-select option, .student-select option {
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+          }
+        `}
+      </style>
+      <div className="bg-particles" />
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-accent-teal to-cyan-500 text-white font-semibold px-6 py-3 rounded-lg shadow-neumorphic border border-white/20 backdrop-blur-sm z-50 animate-fade-in">
+          {successMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-red-500/80 text-white font-semibold px-6 py-3 rounded-lg shadow-neumorphic border border-white/20 backdrop-blur-sm z-50 animate-fade-in">
+          {errorMessage}
+        </div>
+      )}
+
       {selectedGroup ? renderDetailsView() : renderListView()}
     </div>
   );

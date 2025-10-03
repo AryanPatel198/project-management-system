@@ -18,6 +18,8 @@ import {
   getGroupById,
   getAvailableStudents,
   getStudentsByGroup,
+  updateGroup,
+  deleteGroup,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -77,5 +79,11 @@ router.get("/get-available-students", protectAdmin, getAvailableStudents);
 
 // GET /api/admin/get-students-by-group/:id
 router.get("/get-students-by-group/:id", protectAdmin, getStudentsByGroup);
+
+// PUT /api/admin/update-group/:id
+router.put("/update-group/:id", protectAdmin, updateGroup);
+
+// DELETE /api/admin/delete-group/:id
+router.delete("/delete-group/:id", protectAdmin, deleteGroup);
 
 export default router;

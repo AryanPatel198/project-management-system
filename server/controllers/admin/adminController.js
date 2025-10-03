@@ -554,7 +554,6 @@ export const getAvailableStudents = async (req, res) => {
   }
 };
 
-
 /**
  * GET /api/admin/get-students-by-group/:id
  * Fetch all students in a specific group
@@ -565,7 +564,10 @@ export const getStudentsByGroup = async (req, res) => {
 
     // Find the group and populate students
     const group = await Group.findById(id)
-      .populate("students", "studentName enrollmentNumber division isRegistered")
+      .populate(
+        "students",
+        "studentName enrollmentNumber division isRegistered"
+      )
       .populate("division", "course semester year")
       .exec();
 
@@ -589,6 +591,83 @@ export const getStudentsByGroup = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching students by group",
+    });
+  }
+};
+
+/**
+ * PUT /api/admin/update-group/:id
+ * Update group details (guide, members)
+ */
+export const updateGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guide, members } = req.body;
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    // Update guide if provided
+    if (guide !== undefined) {
+      group.guide = guide;
+    }
+
+    // Update members if provided
+    if (members !== undefined) {
+      group.members = members;
+    }
+
+    await group.save();
+
+    // Populate guide details for response
+    await group.populate("guide", "name email expertise phone");
+
+    res.status(200).json({
+      success: true,
+      message: "Group updated successfully",
+      data: group,
+    });
+  } catch (err) {
+    console.error("❌ Error updating group:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating group",
+    });
+  }
+};
+
+/**
+ * DELETE /api/admin/delete-group/:id
+ * Delete a group
+ */
+export const deleteGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    await Group.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Group deleted successfully",
+    });
+  } catch (err) {
+    console.error("❌ Error deleting group:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting group",
     });
   }
 };
