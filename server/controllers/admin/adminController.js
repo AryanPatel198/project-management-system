@@ -521,3 +521,74 @@ export const getGroupById = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/admin/get-available-students
+ * Fetch all students who are not currently part of any group
+ */
+export const getAvailableStudents = async (req, res) => {
+  try {
+    // Step 1: Find all student IDs already assigned to groups
+    const groupedStudents = await Group.find({}, "students").lean();
+    const assignedStudentIds = groupedStudents.flatMap((g) => g.students);
+
+    // Step 2: Query students not in that list
+    const availableStudents = await Student.find({
+      _id: { $nin: assignedStudentIds },
+    })
+      .populate("division", "course semester year status")
+      .select("studentName enrollmentNumber division isRegistered")
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: availableStudents.length,
+      data: availableStudents,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching available students:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching available students",
+    });
+  }
+};
+
+
+/**
+ * GET /api/admin/get-students-by-group/:id
+ * Fetch all students in a specific group
+ */
+export const getStudentsByGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the group and populate students
+    const group = await Group.findById(id)
+      .populate("students", "studentName enrollmentNumber division isRegistered")
+      .populate("division", "course semester year")
+      .exec();
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      groupId: group._id,
+      groupName: group.name,
+      division: group.division,
+      studentCount: group.students.length,
+      students: group.students,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching students by group:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching students by group",
+    });
+  }
+};

@@ -16,6 +16,8 @@ import {
   getGroupsByYear,
   getDivisions,
   getGroupById,
+  getAvailableStudents,
+  getStudentsByGroup,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -69,5 +71,11 @@ router.get("/get-divisions", protectAdmin, getDivisions);
 
 // GET /api/admin/get-group/:id
 router.get("/get-group/:id", protectAdmin, getGroupById);
+
+// GET /api/admin/get-available-students
+router.get("/get-available-students", protectAdmin, getAvailableStudents);
+
+// GET /api/admin/get-students-by-group/:id
+router.get("/get-students-by-group/:id", protectAdmin, getStudentsByGroup);
 
 export default router;

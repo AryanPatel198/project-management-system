@@ -48,7 +48,7 @@ export const groupAPI = {
 // ✅ Students API
 export const studentAPI = {
   getAll: () => api.get("/students"),
-  getAvailable: (params) => api.get("/students/available", { params }),
+  getAvailable: (params) => api.get("/get-available-students", { params }),
 };
 
 // ✅ Divisions API
