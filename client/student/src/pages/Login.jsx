@@ -1,13 +1,36 @@
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { BookOpen, GraduationCap, Users } from 'lucide-react';
+import { studentPublicAPI } from '../services/api';
 
 function Login() {
   const navigate = useNavigate();
+  const [enrollmentNumber, setEnrollmentNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    navigate('/student/dashboard');
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!enrollmentNumber.trim() || !password.trim()) {
+      setError('Both enrollment number and password are required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await studentPublicAPI.login({ enrollmentNumber: enrollmentNumber.trim(), password });
+      localStorage.setItem('token', response.token);
+      navigate('/student/dashboard');
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,13 +71,21 @@ function Login() {
             <p className="text-white/70 text-lg">Sign in to continue your academic journey</p>
           </div>
           
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
+          <form onSubmit={handleLogin} className="space-y-8">
+            {error && (
+              <div className="text-red-400 text-center bg-red-900/20 border border-red-500/50 rounded-lg p-3">
+                {error}
+              </div>
+            )}
             <div className="space-y-6">
               <Input
                 id="enrollmentNumber"
                 label="Enrollment Number"
                 type="text"
                 placeholder="Enter your enrollment number"
+                value={enrollmentNumber}
+                onChange={(e) => setEnrollmentNumber(e.target.value)}
+                required
                 className="w-full p-4 bg-white/10 text-white rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
               <Input
@@ -62,16 +93,19 @@ function Login() {
                 label="Password"
                 type="password"
                 placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 className="w-full p-4 bg-white/10 text-white rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
             </div>
-            
+
             <Button
               type="submit"
-              onClick={handleLogin}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 hover:scale-105 transition-all duration-300 shadow-2xl"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 hover:scale-105 transition-all duration-300 shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
 

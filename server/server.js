@@ -3,6 +3,7 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import config from "./config/env.js";
 import adminRoutes from "./routes/admin/adminRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js";
 
 connectDB();
 const app = express();
@@ -22,6 +23,7 @@ app.use(
 
 // Routes
 app.use("/api/admin", adminRoutes);
+app.use("/api/student", studentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
