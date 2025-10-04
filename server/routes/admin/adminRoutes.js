@@ -16,8 +16,12 @@ import {
   getGroupsByYear,
   getDivisions,
   getGroupById,
+  getGroups,
+  getAvailableStudentsForGroup,
   getAvailableStudents,
   getStudentsByGroup,
+  updateGroup,
+  deleteGroup,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -77,5 +81,23 @@ router.get("/get-available-students", protectAdmin, getAvailableStudents);
 
 // GET /api/admin/get-students-by-group/:id
 router.get("/get-students-by-group/:id", protectAdmin, getStudentsByGroup);
+
+// PUT /api/admin/update-group/:id
+router.put("/update-group/:id", protectAdmin, updateGroup);
+
+// DELETE /api/admin/delete-group/:id
+router.delete("/delete-group/:id", protectAdmin, deleteGroup);
+
+// GET /api/admin/get-groups (with filters)
+router.get("/get-groups", protectAdmin, getGroups);
+
+// GET /api/admin/groups/:id/students/available
+router.get(
+  "/groups/:id/students/available",
+  protectAdmin,
+  getAvailableStudentsForGroup
+);
+
+// Existing update-group is already there; no change needed.
 
 export default router;

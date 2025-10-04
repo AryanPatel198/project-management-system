@@ -52,6 +52,8 @@ const groupSchema = new mongoose.Schema(
         enrollmentNumber: String,
         name: String,
         joinedAt: { type: Date, default: Date.now },
+        divisionCourse: String,
+        divisionSemester: Number,
       },
     ],
     status: {
