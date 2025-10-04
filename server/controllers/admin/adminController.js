@@ -596,52 +596,6 @@ export const getStudentsByGroup = async (req, res) => {
 };
 
 /**
- * PUT /api/admin/update-group/:id
- * Update group details (guide, members)
- */
-export const updateGroup = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { guide, members } = req.body;
-
-    const group = await Group.findById(id);
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        message: "Group not found",
-      });
-    }
-
-    // Update guide if provided
-    if (guide !== undefined) {
-      group.guide = guide;
-    }
-
-    // Update members if provided
-    if (members !== undefined) {
-      group.members = members;
-    }
-
-    await group.save();
-
-    // Populate guide details for response
-    await group.populate("guide", "name email expertise phone");
-
-    res.status(200).json({
-      success: true,
-      message: "Group updated successfully",
-      data: group,
-    });
-  } catch (err) {
-    console.error("❌ Error updating group:", err.message);
-    res.status(500).json({
-      success: false,
-      message: "Server error while updating group",
-    });
-  }
-};
-
-/**
  * DELETE /api/admin/delete-group/:id
  * Delete a group
  */
@@ -669,5 +623,198 @@ export const deleteGroup = async (req, res) => {
       success: false,
       message: "Server error while deleting group",
     });
+  }
+};
+
+// GET /api/admin/get-groups (with course, semester, year filters)
+export const getGroups = async (req, res) => {
+  try {
+    const { course, semester, year } = req.query;
+    const filter = {};
+    if (course) filter["division.course"] = course; // Assuming populated division
+    if (semester) filter["division.semester"] = Number(semester);
+    if (year) filter.year = Number(year);
+
+    const groups = await Group.find(filter)
+      .populate("guide", "name email expertise phone")
+      .populate("division", "course semester year")
+      .populate("students", "studentName enrollmentNumber division")
+      .exec();
+
+    // Format members snapshot for frontend (fallback to students if snapshot empty)
+    const formattedGroups = groups.map((g) => ({
+      _id: g._id,
+      name: g.name,
+      year: g.year,
+      projectTitle: g.projectTitle,
+      projectDescription: g.projectDescription,
+      projectTechnology: g.projectTechnology,
+      status: g.status,
+      guide: g.guide
+        ? {
+            _id: g.guide._id,
+            name: g.guide.name,
+            email: g.guide.email,
+            expertise: g.guide.expertise,
+            phone: g.guide.phone,
+          }
+        : null,
+      members:
+        g.membersSnapshot.length > 0
+          ? g.membersSnapshot.map((m) => ({
+              name: m.name,
+              enrollment: m.enrollmentNumber,
+              className: `${m.divisionCourse} ${m.divisionSemester}`, // Store these in snapshot if needed
+            }))
+          : g.students.map((s) => ({
+              name: s.studentName,
+              enrollment: s.enrollmentNumber,
+              className: `${s.division.course} ${s.division.semester}`,
+            })),
+      divisionId: g.division._id, // For available students fetch
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedGroups.length,
+      data: formattedGroups,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching groups:", err.message);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error while fetching groups" });
+  }
+};
+
+// GET /api/admin/groups/:id/students/available (group-specific, filtered by division)
+export const getAvailableStudentsForGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { course, semester, year } = req.query;
+
+    if (!course || !semester || !year) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing division filters" });
+    }
+
+    // Find assigned student IDs in this group
+    const group = await Group.findById(id).select("students");
+    const assignedIds = group ? group.students : [];
+
+    // Find unassigned students in the same division
+    const availableStudents = await Student.find({
+      _id: { $nin: assignedIds },
+      "division.course": course,
+      "division.semester": Number(semester),
+      "division.year": Number(year),
+    })
+      .populate("division", "course semester year")
+      .select("studentName enrollmentNumber division")
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: availableStudents.length,
+      data: availableStudents.map((s) => ({
+        enrollmentNumber: s.enrollmentNumber,
+        name: s.studentName,
+        className: `${s.division.course} ${s.division.semester}`,
+      })),
+    });
+  } catch (err) {
+    console.error(
+      "❌ Error fetching available students for group:",
+      err.message
+    );
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Server error while fetching available students",
+      });
+  }
+};
+
+// Fix: PUT /api/admin/update-group/:id (handle guide change and members add/remove properly)
+export const updateGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { guideId, addStudentIds, removeStudentId } = req.body; // Use IDs for accuracy
+
+    const group = await Group.findById(id).populate(
+      "students",
+      "studentName enrollmentNumber division"
+    );
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+
+    // Change guide
+    if (guideId) {
+      group.guide = guideId;
+    }
+
+    // Add students (if provided; assumes addStudentIds is array of Student _ids)
+    if (addStudentIds && addStudentIds.length > 0) {
+      if (group.students.length + addStudentIds.length > 4) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Cannot exceed 4 members" });
+      }
+      const newStudents = await Student.find({ _id: { $in: addStudentIds } });
+      group.students.push(...addStudentIds);
+      group.membersSnapshot.push(
+        ...newStudents.map((s) => ({
+          studentRef: s._id,
+          enrollmentNumber: s.enrollmentNumber,
+          name: s.studentName,
+          joinedAt: new Date(),
+          // Store division snapshot for frontend
+          divisionCourse: s.division.course,
+          divisionSemester: s.division.semester,
+        }))
+      );
+    }
+
+    // Remove student (if provided; removeStudentId is Student _id)
+    if (removeStudentId) {
+      if (group.students.length <= 3) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Minimum 3 members required" });
+      }
+      group.students = group.students.filter(
+        (sId) => sId.toString() !== removeStudentId
+      );
+      group.membersSnapshot = group.membersSnapshot.filter(
+        (ms) => ms.studentRef.toString() !== removeStudentId
+      );
+    }
+
+    await group.save();
+    await group.populate("guide", "name email expertise phone");
+    await group.populate("students", "studentName enrollmentNumber division");
+
+    res.status(200).json({
+      success: true,
+      message: "Group updated successfully",
+      data: {
+        ...group.toObject(),
+        members: group.membersSnapshot.map((ms) => ({
+          name: ms.name,
+          enrollment: ms.enrollmentNumber,
+          className: `${ms.divisionCourse} ${ms.divisionSemester}`,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error updating group:", err.message);
+    res
+      .status(500)
+      .json({ success: false, message: "Server error while updating group" });
   }
 };
