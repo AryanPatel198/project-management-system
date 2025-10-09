@@ -20,13 +20,6 @@ import {
   getAvailableStudentsForGroup,
   getAvailableStudents,
   getStudentsByGroup,
-  getEvaluationParams,
-  addEvaluationParam,
-  updateEvaluationParam,
-  deleteEvaluationParam,
-  getProjectEvaluations,
-  getProjectEvaluationById,
-  updateProjectEvaluation,
   updateGroup,
   deleteGroup,
 } from "../../controllers/admin/adminController.js";
@@ -34,49 +27,75 @@ import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// --- Auth routes ---
+// POST /api/admin/login
 router.post("/login", loginAdmin);
+
+// POST /api/admin/register (optional for seeding first admin)
 router.post("/register", registerAdmin);
+
+// Forgot
 router.post("/forgot-password", forgotPassword);
+
+// Reset;
 router.post("/reset-password", resetPassword);
 
-// --- Protected routes ---
+// Protected routes (require authentication)
 router.use(protectAdmin);
 
-// Admin profile
+// GET /api/admin/profile
 router.get("/profile", getAdminProfile);
+
+// PUT /api/admin/profile
 router.put("/profile", updateAdminProfile);
+
+// Change password
 router.post("/change-password", changePassword);
 
-// --- Guide management ---
-router.get("/get-all-guides", getAllGuides);
-router.post("/add-guide", createGuide);
-router.put("/update-guide/:id", updateGuide);
-router.patch("/new-guide-status/:id", updateGuideStatus);
-router.get("/active-guides", getActiveGuides);
+// Manage Guides apis
+// GET /api/admin/guides -> returns list of guides
+router.get("/get-all-guides", protectAdmin, getAllGuides);
 
-// --- Group management ---
-router.get("/get-groups", getGroupsByYearOrCourse);
-router.get("/get-divisions", getDivisions);
-router.get("/get-group/:id", getGroupById);
-router.put("/update-group/:id", updateGroup);
-router.delete("/delete-group/:id", deleteGroup);
-router.get("/get-available-students", getAvailableStudents);
-router.get("/get-students-by-group/:id", getStudentsByGroup);
-router.get("/groups/:id/students/available", getAvailableStudentsForGroup);
+// POST /api/admin/add-guide
+router.post("/add-guide", protectAdmin, createGuide);
 
-// --- Evaluation parameter management ---
-router.get("/get-evaluation-params", getEvaluationParams);
-router.post("/add-evaluation-param", addEvaluationParam);
-router.put("/update-evaluation-param/:id", updateEvaluationParam);
-router.delete("/delete-evaluation-param/:id", deleteEvaluationParam);
+// PUT /api/admin/update-guide/:id
+router.put("/update-guide/:id", protectAdmin, updateGuide);
 
-// --- Project evaluations ---
-router.get("/get-project-evaluations", getProjectEvaluations);
-router.get("/get-project-evaluation/:projectId", getProjectEvaluationById);
-router.put(
-  "/project-evaluations/:projectId/:parameterId",
-  updateProjectEvaluation
+// PATCH /api/admin/new-guide-status/:id
+router.patch("/new-guide-status/:id", protectAdmin, updateGuideStatus);
+
+// GET /api/admin/active-guides
+router.get("/active-guides", protectAdmin, getActiveGuides);
+
+// GET /api/admin/get-groups?year=2025
+router.get("/get-groups", protectAdmin, getGroupsByYearOrCourse);
+
+// GET /api/admin/get-divisions
+router.get("/get-divisions", protectAdmin, getDivisions);
+
+// GET /api/admin/get-group/:id
+router.get("/get-group/:id", protectAdmin, getGroupById);
+
+// GET /api/admin/get-available-students
+router.get("/get-available-students", protectAdmin, getAvailableStudents);
+
+// GET /api/admin/get-students-by-group/:id
+router.get("/get-students-by-group/:id", protectAdmin, getStudentsByGroup);
+
+// PUT /api/admin/update-group/:id
+router.put("/update-group/:id", protectAdmin, updateGroup);
+
+// DELETE /api/admin/delete-group/:id
+router.delete("/delete-group/:id", protectAdmin, deleteGroup);
+
+// GET /api/admin/get-groups (with filters)
+router.get("/get-groups", protectAdmin, getGroups);
+
+// GET /api/admin/groups/:id/students/available
+router.get(
+  "/groups/:id/students/available",
+  protectAdmin,
+  getAvailableStudentsForGroup
 );
 
 export default router;
