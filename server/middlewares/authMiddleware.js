@@ -1,7 +1,8 @@
 // backend/src/middlewares/authMiddleware.js
 import jwt from "jsonwebtoken";
 import Admin from "../models/admin.js";
-// import Guide from "../models/guide.js";
+import Guide from "../models/guide.js";
+import Student from "../models/student.js";
 
 // ✅ Protect Admin
 export const protectAdmin = async (req, res, next) => {
@@ -42,6 +43,27 @@ export const protectGuide = async (req, res, next) => {
       return next();
     } catch (error) {
       return res.status(401).json({ message: "Not authorized as guide" });
+    }
+  }
+
+  res.status(401).json({ message: "No token, authorization denied" });
+};
+
+// ✅ Protect Student
+export const protectStudent = async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization?.startsWith("Bearer")) {
+    try {
+      token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      req.student = await Student.findById(decoded.id).select("-password");
+      if (!req.student) throw new Error();
+
+      return next();
+    } catch (error) {
+      return res.status(401).json({ message: "Not authorized as student" });
     }
   }
 
