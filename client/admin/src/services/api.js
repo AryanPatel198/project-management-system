@@ -36,12 +36,12 @@ export const guideAPI = {
 
 // ✅ Groups API
 export const groupAPI = {
-  getAll: (params) => api.get("/groups", { params }), // Supports course and year filters
+  getAll: (params) => api.get("/get-groups", { params }), // Supports course and year filters
   getById: (id) => api.get(`/groups/${id}`),
   getAvailableStudents: (id, params) =>
     api.get(`/groups/${id}/students/available`, { params }),
   create: (payload) => api.post("/groups", payload),
-  update: (id, payload) => api.put(`/groups/${id}`, payload),
+  update: (id, payload) => api.put(`/update-group/${id}`, payload),
   delete: (id) => api.delete(`/groups/${id}`),
 };
 
@@ -72,10 +72,10 @@ export const enrollmentAPI = {
 
 // ✅ Evaluation Parameters API
 export const evaluationParameterAPI = {
-  getAll: () => api.get("/evaluation-parameters"),
-  create: (payload) => api.post("/evaluation-parameters", payload),
-  update: (id, payload) => api.put(`/evaluation-parameters/${id}`, payload),
-  delete: (id) => api.delete(`/evaluation-parameters/${id}`),
+  getAll: () => api.get("/get-evaluation-params"),
+  create: (payload) => api.post("/add-evaluation-params", payload),
+  update: (id, payload) => api.put(`/update-evaluation-params/${id}`, payload),
+  delete: (id) => api.delete(`/evaluation-params/${id}`),
 };
 
 // ✅ Admin API
@@ -103,8 +103,8 @@ export const courseAnnouncementAPI = {
 
 // ✅ Project Evaluations API
 export const projectEvaluationAPI = {
-  getAll: () => api.get("/project-evaluations"),
-  getByProject: (projectId) => api.get(`/project-evaluations/${projectId}`),
+  getAll: () => api.get("/get-project-evaluations"),
+  getByProject: (projectId) => api.get(`/get-project-evaluation/${projectId}`),
   update: (projectId, parameterId, payload) =>
     api.put(`/project-evaluations/${projectId}/${parameterId}`, payload),
 };

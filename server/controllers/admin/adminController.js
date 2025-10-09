@@ -8,6 +8,8 @@ import Guide from "../../models/guide.js";
 import Group from "../../models/group.js";
 import Division from "../../models/division.js";
 import Student from "../../models/student.js";
+import EvaluationParameter from "../../models/evaluationParameter.js";
+import ProjectEvaluation from "../../models/projectEvaluation.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -399,24 +401,51 @@ export const getActiveGuides = async (req, res) => {
 };
 
 /**
- * GET /api/admin/get-groups?year=2025
- * Fetch groups filtered by year (optional)
+ * GET /api/admin/get-groups?year=2025&course=BCA
+ * Fetch groups filtered by year and/or course (optional)
  */
-export const getGroupsByYear = async (req, res) => {
+export const getGroupsByYearOrCourse = async (req, res) => {
   try {
-    const { year } = req.query;
+    const { year, course } = req.query;
 
-    // Build filter dynamically
-    const filter = {};
-    if (year) {
-      filter.year = Number(year);
+    // Step 1: Filter by year if provided
+    const matchStage = {};
+    if (year) matchStage.year = Number(year);
+
+    // Step 2: Aggregation pipeline
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "students",
+          localField: "students",
+          foreignField: "_id",
+          as: "members",
+        },
+      },
+      {
+        $lookup: {
+          from: "guides",
+          localField: "guide",
+          foreignField: "_id",
+          as: "guide",
+        },
+      },
+      { $unwind: { path: "$guide", preserveNullAndEmptyArrays: true } },
+    ];
+
+    // Step 3: Filter by course if provided (course prefix in enrollment number)
+    if (course) {
+      pipeline.push({
+        $match: {
+          "members.enrollmentNumber": { $regex: `^${course}`, $options: "i" },
+        },
+      });
     }
 
-    const groups = await Group.find(filter)
-      .populate("guide", "name email expertise phone") // include guide details
-      .exec();
+    const groups = await Group.aggregate(pipeline);
 
-    // Format response for frontend consumption
+    // Step 4: Format response for frontend
     const formattedGroups = groups.map((g) => ({
       _id: g._id,
       name: g.name,
@@ -448,7 +477,7 @@ export const getGroupsByYear = async (req, res) => {
       data: formattedGroups,
     });
   } catch (err) {
-    console.error("❌ Error fetching groups by year:", err.message);
+    console.error("❌ Error fetching groups:", err.message);
     res.status(500).json({
       success: false,
       message: "Server error while fetching groups",
@@ -554,7 +583,6 @@ export const getAvailableStudents = async (req, res) => {
   }
 };
 
-
 /**
  * GET /api/admin/get-students-by-group/:id
  * Fetch all students in a specific group
@@ -565,7 +593,10 @@ export const getStudentsByGroup = async (req, res) => {
 
     // Find the group and populate students
     const group = await Group.findById(id)
-      .populate("students", "studentName enrollmentNumber division isRegistered")
+      .populate(
+        "students",
+        "studentName enrollmentNumber division isRegistered"
+      )
       .populate("division", "course semester year")
       .exec();
 
@@ -589,6 +620,269 @@ export const getStudentsByGroup = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while fetching students by group",
+    });
+  }
+};
+
+/**
+ * GET /api/admin/get-evaluation-params
+ * Fetch all evaluation parameters
+ */
+export const getEvaluationParams = async (req, res) => {
+  try {
+    const params = await EvaluationParameter.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: params.length,
+      data: params,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching evaluation parameters:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching evaluation parameters",
+    });
+  }
+};
+
+/**
+ * POST /api/admin/add-evaluation-param
+ * Add a new evaluation parameter
+ */
+export const addEvaluationParam = async (req, res) => {
+  try {
+    const { name, description, marks } = req.body;
+
+    if (!name || !description || marks === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields (name, description, marks) are required",
+      });
+    }
+
+    const newParam = await EvaluationParameter.create({
+      name,
+      description,
+      marks,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Evaluation parameter created successfully",
+      data: newParam,
+    });
+  } catch (err) {
+    console.error("❌ Error creating evaluation parameter:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while creating evaluation parameter",
+    });
+  }
+};
+
+/**
+ * PUT /api/admin/update-evaluation-param/:id
+ * Update an existing evaluation parameter
+ */
+export const updateEvaluationParam = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, marks } = req.body;
+
+    const param = await EvaluationParameter.findById(id);
+    if (!param) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Parameter not found" });
+    }
+
+    if (name) param.name = name;
+    if (description) param.description = description;
+    if (marks !== undefined) param.marks = marks;
+
+    await param.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Evaluation parameter updated successfully",
+      data: param,
+    });
+  } catch (err) {
+    console.error("❌ Error updating evaluation parameter:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating evaluation parameter",
+    });
+  }
+};
+
+/**
+ * DELETE /api/admin/delete-evaluation-param/:id
+ * Delete an evaluation parameter
+ */
+export const deleteEvaluationParam = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const param = await EvaluationParameter.findById(id);
+    if (!param) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Parameter not found" });
+    }
+
+    await param.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: "Evaluation parameter deleted successfully",
+    });
+  } catch (err) {
+    console.error("❌ Error deleting evaluation parameter:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting evaluation parameter",
+    });
+  }
+};
+
+/**
+ * GET /api/admin/get-project-evaluations
+ * Fetch all project evaluations with project and parameter details
+ */
+export const getProjectEvaluations = async (req, res) => {
+  try {
+    const evaluations = await ProjectEvaluation.find()
+      .populate("projectId", "name projectTitle") // only include these fields
+      .populate("parameterId", "marks") // only marks field
+      .populate("evaluatedBy", "_id"); // keep minimal info
+
+    res.status(200).json(evaluations);
+  } catch (err) {
+    console.error("❌ Error fetching project evaluations:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching project evaluations",
+    });
+  }
+};
+
+export const getProjectEvaluationById = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const evaluations = await ProjectEvaluation.find({ projectId })
+      .populate("parameterId", "name marks description") // param details
+      .populate("evaluatedBy", "name email") // who evaluated
+      .populate("projectId", "name projectTitle") // project basics
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: evaluations.length,
+      data: evaluations,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching project evaluation:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching project evaluation",
+    });
+  }
+};
+
+export const updateGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // If students are being updated, refresh membersSnapshot
+    if (updateData.students && updateData.students.length > 0) {
+      const studentDocs = await Student.find({
+        _id: { $in: updateData.students },
+      });
+      updateData.membersSnapshot = studentDocs.map((s) => ({
+        studentRef: s._id,
+        enrollmentNumber: s.enrollmentNumber,
+        name: s.studentName,
+      }));
+    }
+
+    const updatedGroup = await Group.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("guide", "name email expertise")
+      .populate("division", "course semester year")
+      .populate("students", "studentName enrollmentNumber");
+
+    if (!updatedGroup) {
+      return res.status(404).json({
+        success: false,
+        message: "Group not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedGroup,
+    });
+  } catch (err) {
+    console.error("❌ Error updating group:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating group",
+    });
+  }
+};
+
+export const updateProjectEvaluation = async (req, res) => {
+  try {
+    const { projectId, parameterId } = req.params;
+    const updateData = { ...req.body };
+
+    if (!updateData.evaluatedBy && req.admin) {
+      updateData.evaluatedBy = req.admin._id;
+    }
+
+    const updatedEval = await ProjectEvaluation.findOneAndUpdate(
+      { projectId, parameterId },
+      updateData,
+      { new: true, runValidators: true, upsert: true }
+    )
+      .populate("projectId", "name projectTitle guide")
+      .populate("parameterId", "name marks")
+      .populate("evaluatedBy", "name email");
+
+    // Send email to guide
+    if (updatedEval.projectId?.guide) {
+      const guide = await Guide.findById(updatedEval.projectId.guide);
+      if (guide) {
+        // const mailOptions = MAIL_TEMPLATES. GUIDE_EVALUATION_UPDATED({
+        //   name: guide.name,
+        //   projectName: updatedEval.projectId.projectTitle,
+        // });
+        await sendEmail({
+          to: guide.email,
+          type: "GUIDE_EVALUATION_UPDATED",
+          data: {
+            name: guide.name,
+            projectName: updatedEval.projectId.projectTitle,
+          },
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedEval,
+    });
+  } catch (err) {
+    console.error("❌ Error updating evaluation:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating evaluation",
     });
   }
 };

@@ -256,6 +256,55 @@ const emailTemplates = {
      `,
     text: `Hello ${name}, reset your password using this link: ${resetLink}\n\nIf you did not request this, please ignore this email.`,
   }),
+
+  GUIDE_EVALUATION_UPDATED: ({ name, projectName }) => ({
+    subject: `Project Evaluations Updated for "${projectName}"`,
+    html: `
+    <div style="${BASE_STYLE} padding: 20px; background-color: #f4f4f4;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid #ddd; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+              
+              <tr>
+                <td align="center" style="padding: 20px; background-color: #007bff; color: #ffffff;">
+                  <h1 style="margin: 0; font-size: 24px;">Project Evaluations Updated 📝</h1>
+                </td>
+              </tr>
+              
+              <tr>
+                <td style="padding: 40px;">
+                  <h2 style="color: #007bff; margin-top: 0;">Hello ${name},</h2>
+                  <p style="font-size: 16px;">
+                    The **evaluations for your project "${projectName}"** have been updated by the admin.
+                  </p>
+                  
+                  <p style="font-size: 16px;">
+                    Please review the updated marks and provide feedback if necessary.  
+                  </p>
+                  
+                  <p style="text-align: center; margin-top: 30px;">
+                    <a href="[Your Dashboard URL]" target="_blank" style="display: inline-block; padding: 12px 25px; background-color: #28a745; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                      View Evaluations
+                    </a>
+                  </p>
+                </td>
+              </tr>
+
+              <tr>
+                <td align="center" style="padding: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999;">
+                  &copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `,
+    text: `Hello ${name},\n\nThe evaluations for your project "${projectName}" have been updated by the admin.\nPlease review them at [Your Dashboard URL].\n\n- Your Company Name`,
+  }),
 };
 
 // ... (sendEmail function remains the same)

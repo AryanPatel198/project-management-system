@@ -54,8 +54,9 @@ const FilterDropdown = ({
         <span>{selected || title}</span>
         <ChevronDown
           size={20}
-          className={`transform transition-transform duration-200 ${isOpen ? "rotate-180" : "rotate-0"
-            } text-white`}
+          className={`transform transition-transform duration-200 ${
+            isOpen ? "rotate-180" : "rotate-0"
+          } text-white`}
         />
       </button>
       {isOpen && (
@@ -65,10 +66,11 @@ const FilterDropdown = ({
               <li
                 key={index}
                 onClick={() => handleSelect(option)}
-                className={`px-4 py-2 cursor-pointer transition-colors duration-200 text-white ${selected === option
-                  ? "bg-accent-teal font-bold"
-                  : "hover:bg-accent-teal/30"
-                  }`}
+                className={`px-4 py-2 cursor-pointer transition-colors duration-200 text-white ${
+                  selected === option
+                    ? "bg-accent-teal font-bold"
+                    : "hover:bg-accent-teal/30"
+                }`}
               >
                 {option}
               </li>
@@ -105,35 +107,36 @@ function ProjectManagement() {
   const statusOptions = ["All", "Not Started", "In Progress", "Completed"];
   const techOptions = [
     "All",
-    ...new Set(projects.map((project) => project.projectTechnology || project.technology)),
+    ...new Set(
+      projects.map((project) => project.projectTechnology || project.technology)
+    ),
   ];
   const courseOptions = ["All", "MCA", "BCA", "B.Tech", "M.Tech"];
   const yearOptions = ["All", "2023", "2024", "2025"];
 
   // Fetch data on mount and when filters change
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [groupsRes, paramsRes, evalsRes] = await Promise.all([
+          groupAPI.getAll({
+            course: courseFilter === "All" ? undefined : courseFilter,
+            year: yearFilter === "All" ? undefined : yearFilter,
+          }),
+          evaluationParameterAPI.getAll(),
+          projectEvaluationAPI.getAll(),
+        ]);
+        setProjects(groupsRes.data.data);
+        setEvaluationParameters(paramsRes.data.data);
+        setProjectEvaluations(evalsRes.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchData();
   }, [courseFilter, yearFilter]);
-
-  const fetchData = async () => {
-    try {
-      const [groupsRes, paramsRes, evalsRes] = await Promise.all([
-        groupAPI.getAll({
-          course: courseFilter === "All" ? undefined : courseFilter,
-          year: yearFilter === "All" ? undefined : yearFilter,
-        }),
-        evaluationParameterAPI.getAll(),
-        projectEvaluationAPI.getAll(),
-      ]);
-      setProjects(groupsRes.data);
-      setEvaluationParameters(paramsRes.data);
-      setProjectEvaluations(evalsRes.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter projects based on selected filters
   const filteredProjects = projects.filter((project) => {
@@ -227,7 +230,7 @@ function ProjectManagement() {
       );
       // Update localMarks with the saved values
       const marks = {};
-      res.data.forEach((e) => {
+      res.data.data.forEach((e) => {
         marks[`${selectedGroup._id}_${e.parameterId._id}`] = e.givenMarks || "";
       });
       setLocalMarks(marks);
@@ -269,7 +272,7 @@ function ProjectManagement() {
       );
       // Initialize local marks
       const marks = {};
-      res.data.forEach((e) => {
+      res.data.data.forEach((e) => {
         marks[`${group._id}_${e.parameterId._id}`] = e.givenMarks || "";
       });
       setLocalMarks(marks);
@@ -321,12 +324,12 @@ function ProjectManagement() {
       await groupAPI.update(editProject._id, payload);
       setProjects(
         projects.map((p) =>
-          p._id === editProject._id
-            ? { ...p, ...payload }
-            : p
+          p._id === editProject._id ? { ...p, ...payload } : p
         )
       );
-      setSelectedGroup((prev) => (prev && prev._id === editProject._id ? { ...prev, ...payload } : prev));
+      setSelectedGroup((prev) =>
+        prev && prev._id === editProject._id ? { ...prev, ...payload } : prev
+      );
       setSuccessMessage(`Project "${editProject.title}" updated successfully!`);
       setShowAddEditModal(false);
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -343,7 +346,9 @@ function ProjectManagement() {
       setSelectedGroup(null);
       setShowDeleteModal(false);
       setSuccessMessage(
-        `Project "${selectedGroup.projectTitle || selectedGroup.title}" deleted successfully!`
+        `Project "${
+          selectedGroup.projectTitle || selectedGroup.title
+        }" deleted successfully!`
       );
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
@@ -379,12 +384,16 @@ function ProjectManagement() {
           <div className="flex items-center">
             <Briefcase size={20} className="mr-3 text-white" />
             <p className="font-semibold">Title:</p>
-            <span className="ml-2">{selectedGroup.projectTitle || selectedGroup.title}</span>
+            <span className="ml-2">
+              {selectedGroup.projectTitle || selectedGroup.title}
+            </span>
           </div>
           <div className="flex items-center">
             <Code size={20} className="mr-3 text-white" />
             <p className="font-semibold">Technology:</p>
-            <span className="ml-2">{selectedGroup.projectTechnology || selectedGroup.technology}</span>
+            <span className="ml-2">
+              {selectedGroup.projectTechnology || selectedGroup.technology}
+            </span>
           </div>
           <div className="flex items-center">
             <span className="text-white text-lg mr-3">📊</span>
@@ -398,7 +407,9 @@ function ProjectManagement() {
           </div>
           <div>
             <p className="font-semibold mb-1">Description:</p>
-            <p className="text-lg">{selectedGroup.projectDescription || selectedGroup.description}</p>
+            <p className="text-lg">
+              {selectedGroup.projectDescription || selectedGroup.description}
+            </p>
           </div>
         </div>
         <div className="mt-8">
@@ -562,7 +573,9 @@ function ProjectManagement() {
                   <div className="flex items-center">
                     <Code size={20} className="mr-3 text-white" />
                     <p className="font-semibold">Technology:</p>
-                    <span className="ml-2">{project.projectTechnology || project.technology}</span>
+                    <span className="ml-2">
+                      {project.projectTechnology || project.technology}
+                    </span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-white text-lg mr-3">📊</span>
