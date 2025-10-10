@@ -110,6 +110,7 @@ function ExamScheduleManagement() {
     fetchCourseAnnouncements();
     fetchGuideAnnouncements();
     fetchDivisions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set courses from divisions
@@ -124,7 +125,7 @@ function ExamScheduleManagement() {
       setSchedulesLoading(true);
       setSchedulesError(null);
       const response = await examScheduleAPI.getAll({ course: filterCourse });
-      setSchedules(response.data);
+      setSchedules(response.data.data);
     } catch (error) {
       setSchedulesError(
         error.response?.data?.message || "Failed to fetch schedules"
@@ -140,7 +141,7 @@ function ExamScheduleManagement() {
       setCourseAnnouncementsLoading(true);
       setCourseAnnouncementsError(null);
       const response = await courseAnnouncementAPI.getAll();
-      setCourseAnnouncements(response.data);
+      setCourseAnnouncements(response.data.data);
     } catch (error) {
       setCourseAnnouncementsError(
         error.response?.data?.message || "Failed to fetch course announcements"
@@ -156,7 +157,7 @@ function ExamScheduleManagement() {
       setGuideAnnouncementsLoading(true);
       setGuideAnnouncementsError(null);
       const response = await guideAnnouncementAPI.getAll();
-      setGuideAnnouncements(response.data);
+      setGuideAnnouncements(response.data.data);
     } catch (error) {
       setGuideAnnouncementsError(
         error.response?.data?.message || "Failed to fetch guide announcements"
@@ -170,7 +171,7 @@ function ExamScheduleManagement() {
   const fetchDivisions = async () => {
     try {
       const response = await divisionAPI.getAll();
-      setDivisions(response.data);
+      setDivisions(response.data.data);
     } catch (error) {
       console.error("Error fetching divisions:", error);
     }

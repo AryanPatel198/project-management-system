@@ -10,7 +10,10 @@ import Group from "../../models/group.js";
 import Division from "../../models/division.js";
 import Student from "../../models/student.js";
 import EvaluationParameter from "../../models/evaluationParameter.js";
-import ProjectEvaluation from "../../models/projectEvaluation.js";
+import CourseAnnouncement from "../../models/courseAnnouncement.js";
+import ExamSchedule from "../../models/examSchedule.js";
+import GuideAnnouncement from "../../models/guideAnnouncement.js";
+// import ProjectEvaluation from "../../models/projectEvaluation.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -1442,10 +1445,11 @@ export const removeAllStudentsByDivision = async (req, res) => {
  */
 export const addStudentEnrollment = async (req, res) => {
   try {
-    const { divisionId, enrollmentNumber, name, email, phone, isRegistered } = req.body;
+    const { divisionId, enrollmentNumber, name, email, phone, isRegistered } =
+      req.body;
 
     // 1️⃣ Validate input
-    if (!divisionId || !enrollmentNumber || !name) {
+    if (!divisionId || !enrollmentNumber) {
       return res.status(400).json({
         success: false,
         message: "divisionId, enrollmentNumber, and name are required.",
@@ -1495,3 +1499,454 @@ export const addStudentEnrollment = async (req, res) => {
   }
 };
 
+/**
+ * @desc   Get exam schedules for a course
+ * @route  GET /api/admin/exam-schedules
+ * @access Private (Admin)
+ */
+export const getExamSchedules = async (req, res) => {
+  try {
+    const { course } = req.query;
+
+    // If course is "All", fetch all schedules
+    const filter = course && course !== "All" ? { course } : {};
+
+    const schedules = await ExamSchedule.find(filter).sort({ date: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: schedules.length,
+      data: schedules,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching exam schedules:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching exam schedules",
+    });
+  }
+};
+
+/**
+ * @desc   Get all course announcements
+ * @route  GET /api/admin/course-announcements
+ * @access Private (Admin)
+ */
+export const getCourseAnnouncements = async (req, res) => {
+  try {
+    const announcements = await CourseAnnouncement.find().sort({ date: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: announcements.length,
+      data: announcements,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching course announcements:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching course announcements",
+    });
+  }
+};
+
+/**
+ * @desc   Get all guide announcements
+ * @route  GET /api/admin/guide-announcements
+ * @access Private (Admin)
+ */
+export const getGuideAnnouncements = async (req, res) => {
+  try {
+    const announcements = await GuideAnnouncement.find().sort({ date: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: announcements.length,
+      data: announcements,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching guide announcements:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching guide announcements",
+    });
+  }
+};
+
+/**
+ * @desc   Add a new exam schedule
+ * @route  POST /api/admin/exam-schedules
+ * @access Private (Admin)
+ */
+export const addExamSchedule = async (req, res) => {
+  try {
+    const { course, type, description, date, time } = req.body;
+
+    // Validate required fields
+    if (!course || !type || !description || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "Course, type, description, and date are required",
+      });
+    }
+
+    // Validate enums
+    if (!["BCA", "MCA"].includes(course)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid course. Must be BCA or MCA",
+      });
+    }
+
+    if (!["Exam", "Submission"].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type. Must be 'Exam' or 'Submission'",
+      });
+    }
+
+    const newSchedule = await ExamSchedule.create({
+      course,
+      type,
+      description,
+      date,
+      time: time || "",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Exam schedule created successfully",
+      data: newSchedule,
+    });
+  } catch (err) {
+    console.error("❌ Error creating exam schedule:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while creating exam schedule",
+    });
+  }
+};
+
+/**
+ * @desc   Update an existing exam schedule
+ * @route  PUT /api/admin/exam-schedules/:id
+ * @access Private (Admin)
+ */
+export const updateExamSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { course, type, description, date, time } = req.body;
+
+    // Validate required fields
+    if (!course || !type || !description || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "Course, type, description, and date are required",
+      });
+    }
+
+    // Validate enums
+    if (!["BCA", "MCA"].includes(course)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid course. Must be BCA or MCA",
+      });
+    }
+
+    if (!["Exam", "Submission"].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type. Must be 'Exam' or 'Submission'",
+      });
+    }
+
+    // Find and update
+    const updatedSchedule = await ExamSchedule.findByIdAndUpdate(
+      id,
+      { course, type, description, date, time: time || "" },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedSchedule) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam schedule not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Exam schedule updated successfully",
+      data: updatedSchedule,
+    });
+  } catch (err) {
+    console.error("❌ Error updating exam schedule:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating exam schedule",
+    });
+  }
+};
+
+/**
+ * @desc   Delete an exam schedule by ID
+ * @route  DELETE /api/admin/exam-schedules/:id
+ * @access Private (Admin)
+ */
+export const deleteExamSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find and delete
+    const deletedSchedule = await ExamSchedule.findByIdAndDelete(id);
+
+    if (!deletedSchedule) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam schedule not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Exam schedule deleted successfully",
+      data: deletedSchedule,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting exam schedule:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting exam schedule",
+    });
+  }
+};
+
+/**
+ * @desc   Add a new course announcement
+ * @route  POST /api/admin/course-announcements
+ * @access Private (Admin)
+ */
+export const addCourseAnnouncement = async (req, res) => {
+  try {
+    const { title, message, date, courses } = req.body;
+
+    // Validate required fields
+    if (!title || !message || !date || !courses || !Array.isArray(courses)) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, message, date, and courses array are required",
+      });
+    }
+
+    const newAnnouncement = await CourseAnnouncement.create({
+      title,
+      message,
+      date,
+      courses,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Course announcement added successfully",
+      data: newAnnouncement,
+    });
+  } catch (err) {
+    console.error("❌ Error adding course announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while adding course announcement",
+    });
+  }
+};
+
+/**
+ * @desc   Update a course announcement by ID
+ * @route  PUT /api/admin/course-announcements/:id
+ * @access Private (Admin)
+ */
+export const updateCourseAnnouncement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, message, date, courses } = req.body;
+
+    // Validate required fields
+    if (!title || !message || !date || !courses || !Array.isArray(courses)) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, message, date, and courses array are required",
+      });
+    }
+
+    const updatedAnnouncement = await CourseAnnouncement.findByIdAndUpdate(
+      id,
+      { title, message, date, courses },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedAnnouncement) {
+      return res.status(404).json({
+        success: false,
+        message: "Course announcement not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Course announcement updated successfully",
+      data: updatedAnnouncement,
+    });
+  } catch (err) {
+    console.error("❌ Error updating course announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating course announcement",
+    });
+  }
+};
+
+/**
+ * @desc   Delete a course announcement by ID
+ * @route  DELETE /api/admin/course-announcements/:id
+ * @access Private (Admin)
+ */
+export const deleteCourseAnnouncement = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const announcement = await CourseAnnouncement.findById(id);
+    if (!announcement) {
+      return res.status(404).json({
+        success: false,
+        message: "Course announcement not found",
+      });
+    }
+
+    await announcement.deleteOne(); // Remove the document
+
+    res.status(200).json({
+      success: true,
+      message: "Course announcement deleted successfully",
+    });
+  } catch (err) {
+    console.error("❌ Error deleting course announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting course announcement",
+    });
+  }
+};
+
+/**
+ * @desc   Add a new guide announcement
+ * @route  POST /api/admin/guide-announcements
+ * @access Private (Admin)
+ */
+export const addGuideAnnouncement = async (req, res) => {
+  try {
+    const { title, message, date, guides } = req.body;
+
+    // Validate input
+    if (!title || !message || !date || !guides || !Array.isArray(guides)) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, message, date and guides array are required",
+      });
+    }
+
+    const announcement = await GuideAnnouncement.create({
+      title,
+      message,
+      date,
+      guides,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Guide announcement added successfully",
+      data: announcement,
+    });
+  } catch (err) {
+    console.error("❌ Error adding guide announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while adding guide announcement",
+    });
+  }
+};
+
+/**
+ * @desc   Update a guide announcement by ID
+ * @route  PUT /api/admin/guide-announcements/:id
+ * @access Private (Admin)
+ */
+export const updateGuideAnnouncement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, message, date, guides } = req.body;
+
+    // Validate input
+    if (!title || !message || !date || !guides || !Array.isArray(guides)) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, message, date and guides array are required",
+      });
+    }
+
+    const updatedAnnouncement = await GuideAnnouncement.findByIdAndUpdate(
+      id,
+      { title, message, date, guides },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedAnnouncement) {
+      return res.status(404).json({
+        success: false,
+        message: "Guide announcement not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Guide announcement updated successfully",
+      data: updatedAnnouncement,
+    });
+  } catch (err) {
+    console.error("❌ Error updating guide announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating guide announcement",
+    });
+  }
+};
+
+/**
+ * @desc   Delete a guide announcement by ID
+ * @route  DELETE /api/admin/guide-announcements/:id
+ * @access Private (Admin)
+ */
+export const deleteGuideAnnouncement = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Use findByIdAndDelete directly
+    const deletedAnnouncement = await GuideAnnouncement.findByIdAndDelete(id);
+
+    if (!deletedAnnouncement) {
+      return res.status(404).json({
+        success: false,
+        message: "Guide announcement not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Guide announcement deleted successfully",
+    });
+  } catch (err) {
+    console.error("❌ Error deleting guide announcement:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting guide announcement",
+    });
+  }
+};

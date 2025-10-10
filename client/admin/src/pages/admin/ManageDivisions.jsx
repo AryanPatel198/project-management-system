@@ -104,6 +104,7 @@ function ManageDivisions() {
   const [newEnrollment, setNewEnrollment] = useState({
     divisionId: "",
     enrollmentNumber: "",
+    name: "",
   });
   const [message, setMessage] = useState({ text: "", type: "success" });
   const [courseFilter, setCourseFilter] = useState("All");
@@ -176,10 +177,24 @@ function ManageDivisions() {
   });
 
   // Get enrollments for a division
+  // ManageDivisions.jsx: Around Line 181
+  // Get enrollments for a division - FIXED for inconsistent data structure
   const getDivisionEnrollments = (divisionId) => {
-    return enrollments.filter(
-      (enrollment) => enrollment.division._id.toString() === divisionId
-    );
+    return enrollments.filter((enrollment) => {
+      // 1. Check for nested structure (most common, e.g., from getAll)
+      if (enrollment.division && enrollment.division._id) {
+        return enrollment.division._id.toString() === divisionId;
+      }
+      // 2. Check for flat 'divisionId' property (e.g., from manual add or simplified object)
+      if (enrollment.divisionId) {
+        return enrollment.divisionId.toString() === divisionId;
+      }
+      // 3. Check if the 'division' field itself holds the string ID
+      if (typeof enrollment.division === "string") {
+        return enrollment.division === divisionId;
+      }
+      return false; // Ignore objects that are completely malformed
+    });
   };
 
   // Registered count
@@ -314,50 +329,62 @@ function ManageDivisions() {
       setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
     }
   };
-
-  // Add enrollment
-  // ManageDivisions.jsx, around line 469
-  // Add enrollment
-  // Add enrollment
+  // add enrollment
   const handleAddEnrollment = async () => {
-    // 1. Check for Division ID (Required from previous fix)
+    // 1. Division ID Validation
     if (!newEnrollment.divisionId) {
       setMessage({
         text: "Division ID is missing. Cannot add enrollment.",
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
       return;
     }
 
-    // 2. Check for Enrollment Number
+    // 2. Enrollment Number Presence Validation
     if (!newEnrollment.enrollmentNumber) {
       setMessage({ text: "Please enter an enrollment number!", type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
       return;
     }
 
-    // 3. Check Enrollment Number format
-    if (!/^[A-Za-z]+\d{7}$/.test(newEnrollment.enrollmentNumber)) {
+    // 3. Enrollment Number Format Validation (Fixed to 8 digits)
+    if (!/^[A-Za-z]+\d{8}$/.test(newEnrollment.enrollmentNumber)) {
       setMessage({
-        text: "Enrollment number must be like BCA2025001 (letters followed by 7 digits)!",
+        text: "Enrollment number must be like BCA20253070 or MSCIT20243070 (letters followed by 8 digits)!",
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
       return;
     }
 
     try {
+      // 4. Payload includes all three required fields
       const payload = {
         divisionId: newEnrollment.divisionId,
         enrollmentNumber: newEnrollment.enrollmentNumber,
+        name: newEnrollment.name,
       };
 
       const response = await enrollmentAPI.create(payload);
 
-      setEnrollments([...enrollments, response.data]);
+      const newEnrollmentData = response.data;
+
+      // 5. Data Consistency Fixes:
+      // a) Ensure division ID is present for crash prevention
+      if (!newEnrollmentData.division && !newEnrollmentData.divisionId) {
+        newEnrollmentData.divisionId = newEnrollment.divisionId;
+      }
+      // 🚨 FIX for Rendering: Ensure enrollmentNumber is present to display immediately
+      if (!newEnrollmentData.enrollmentNumber) {
+        newEnrollmentData.enrollmentNumber = newEnrollment.enrollmentNumber;
+      }
+
+      setEnrollments([...enrollments, newEnrollmentData]);
       setShowAddEnrollmentModal(false);
-      setNewEnrollment({ divisionId: "", enrollmentNumber: "" });
+
+      // 6. State Reset Fix: Reset with all properties (including 'name')
+      setNewEnrollment({ divisionId: "", enrollmentNumber: "", name: "" });
 
       setMessage({
         text: `Enrollment ${newEnrollment.enrollmentNumber} added successfully!`,
@@ -371,7 +398,8 @@ function ManageDivisions() {
           (error.response?.data?.message || error.message),
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
+      // 7. Error Message Fix: Ensure type is "error" when clearing an error message
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
     }
   };
 
@@ -394,19 +422,19 @@ function ManageDivisions() {
   };
 
   // Delete all enrollments
+  // ManageDivisions.jsx: Around Line 508
+  // Delete all enrollments for a division - FIXED filter key and modal close
   const handleDeleteAllEnrollments = async () => {
     try {
       const response = await enrollmentAPI.deleteAllByDivision(
         selectedDivision._id
       );
-      // Filter out enrollments belonging to the selected division.
-      // Use `e.division._id` for consistency with `getDivisionEnrollments`
+      // 🚨 FIXED: Use the nested division._id structure for filtering (consistent with getDivisionEnrollments fix)
       setEnrollments(
         enrollments.filter((e) => e.division._id !== selectedDivision._id)
       );
 
-      // 🚨 Ensure the modal closes
-      setShowDeleteAllEnrollmentsModal(false);
+      setShowDeleteAllEnrollmentsModal(false); // 🚨 FIXED: Ensure the modal closes
 
       setMessage({ text: response.data.message, type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
@@ -417,18 +445,23 @@ function ManageDivisions() {
           (error.response?.data?.message || error.message),
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
     }
   };
 
   // Delete division
+  // ManageDivisions.jsx: Around Line 605
+  // Delete division - FIXED enrollment filter key
   const handleDeleteDivision = async () => {
     try {
       await divisionAPI.delete(selectedDivision._id);
       setDivisions(divisions.filter((d) => d._id !== selectedDivision._id));
+
+      // 🚨 FIXED: Use the nested division._id structure for filtering enrollments
       setEnrollments(
-        enrollments.filter((e) => e.divisionId !== selectedDivision._id)
+        enrollments.filter((e) => e.division._id !== selectedDivision._id)
       );
+
       setSelectedDivision(null);
       setShowDeleteDivisionModal(false);
       setMessage({
@@ -443,7 +476,7 @@ function ManageDivisions() {
           (error.response?.data?.message || error.message),
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000);
     }
   };
 
@@ -967,6 +1000,19 @@ function ManageDivisions() {
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300 hover:shadow-md"
                   placeholder="e.g., BCA2025001"
                 />
+                {/* Inside the AddEnrollmentModal component or wherever you handle the JSX
+                <input
+                  type="text"
+                  placeholder="Student Name"
+                  value={newEnrollment.name}
+                  onChange={(e) =>
+                    setNewEnrollment((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300 hover:shadow-md"
+                /> */}
               </div>
             </div>
             <div className="flex justify-end gap-4 mt-8">
@@ -982,7 +1028,7 @@ function ManageDivisions() {
                 className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition-all duration-300 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once"
                 aria-label="Add enrollment"
               >
-                Add YOUR MOM HERE
+                Add
               </button>
             </div>
           </div>
