@@ -48,6 +48,10 @@ import {
   addGuideAnnouncement,
   updateGuideAnnouncement,
   deleteGuideAnnouncement,
+  getProjectEvaluations,
+  getProjectEvaluationById,
+  updateProjectEvaluation,
+  // updateGroupDetails,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -211,5 +215,20 @@ router.put("/guide-announcements/:id", updateGuideAnnouncement);
 
 // DELETE a guide announcement by ID
 router.delete("/guide-announcements/:id", deleteGuideAnnouncement);
+
+router.get("/get-project-evaluations", getProjectEvaluations);
+
+// GET evaluations for a specific project
+router.get("/get-project-evaluation/:projectId", getProjectEvaluationById);
+
+router.put(
+  "/project-evaluations/:projectId/:parameterId",
+  updateProjectEvaluation
+);
+
+router.put("/update-group/:groupId", updateGroup);
+
+// DELETE /api/admin/groups/:id
+router.delete("/groups/:id", deleteGroup);
 
 export default router;

@@ -128,7 +128,7 @@ function ProjectManagement() {
         ]);
         setProjects(groupsRes.data.data);
         setEvaluationParameters(paramsRes.data.data);
-        setProjectEvaluations(evalsRes.data);
+        setProjectEvaluations(evalsRes.data.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {

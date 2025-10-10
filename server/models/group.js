@@ -17,7 +17,7 @@ const groupSchema = new mongoose.Schema(
     division: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Division",
-      required: true,
+      // required: true,
     },
     projectTitle: {
       type: String,

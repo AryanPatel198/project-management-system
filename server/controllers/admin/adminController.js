@@ -13,7 +13,7 @@ import EvaluationParameter from "../../models/evaluationParameter.js";
 import CourseAnnouncement from "../../models/courseAnnouncement.js";
 import ExamSchedule from "../../models/examSchedule.js";
 import GuideAnnouncement from "../../models/guideAnnouncement.js";
-// import ProjectEvaluation from "../../models/projectEvaluation.js";
+import ProjectEvaluation from "../../models/projectEvaluation.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET, {
@@ -1950,3 +1950,278 @@ export const deleteGuideAnnouncement = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc   Get all project evaluations
+ * @route  GET /api/admin/get-project-evaluations
+ * @access Private (Admin)
+ */
+export const getProjectEvaluations = async (req, res) => {
+  try {
+    const evaluations = await ProjectEvaluation.find()
+      .populate("projectId", "name projectTitle") // group info
+      .populate("parameterId", "name description marks") // parameter info
+      .populate("evaluatedBy", "name email") // admin info
+      .exec();
+
+    res.status(200).json({
+      success: true,
+      count: evaluations.length,
+      data: evaluations,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching project evaluations:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching project evaluations",
+    });
+  }
+};
+
+/**
+ * @desc   Get evaluations for a specific project
+ * @route  GET /api/admin/get-project-evaluation/:projectId
+ * @access Private (Admin)
+ */
+export const getProjectEvaluationById = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Validate project existence
+    const project = await Group.findById(projectId).select("name projectTitle");
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Fetch all evaluations for this project
+    const evaluations = await ProjectEvaluation.find({ projectId })
+      .populate("parameterId", "name description marks")
+      .populate("evaluatedBy", "name email");
+
+    res.status(200).json({
+      success: true,
+      project: {
+        id: project._id,
+        name: project.name,
+        title: project.projectTitle,
+      },
+      count: evaluations.length,
+      data: evaluations,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching project evaluation:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching project evaluation",
+    });
+  }
+};
+
+/**
+ * @desc   Update givenMarks for a specific project and parameter
+ * @route  PUT /api/admin/project-evaluations/:projectId/:parameterId
+ * @access Private (Admin)
+ */
+export const updateProjectEvaluation = async (req, res) => {
+  try {
+    const { projectId, parameterId } = req.params;
+    const { givenMarks } = req.body;
+
+    // 1️⃣ Validate marks
+    if (givenMarks === undefined || isNaN(givenMarks)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid numeric value for givenMarks.",
+      });
+    }
+
+    // 2️⃣ Find and update or create evaluation
+    const evaluation = await ProjectEvaluation.findOneAndUpdate(
+      { projectId, parameterId },
+      {
+        givenMarks,
+        evaluatedBy: req.admin?.id, // from protectAdmin middleware
+      },
+      { new: true, upsert: true, runValidators: true }
+    )
+      .populate("parameterId", "name description marks")
+      .populate("evaluatedBy", "name email");
+
+    // 3️⃣ Handle missing evaluation (should not happen due to upsert)
+    if (!evaluation) {
+      return res.status(404).json({
+        success: false,
+        message: "Evaluation record not found for this project and parameter.",
+      });
+    }
+
+    // 4️⃣ Success response
+    res.status(200).json({
+      success: true,
+      message: "Project evaluation updated successfully.",
+      data: evaluation,
+    });
+  } catch (error) {
+    console.error("❌ Error updating project evaluation:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating project evaluation.",
+    });
+  }
+};
+
+/**
+ * @desc   Update a group's details (Admin or internal route)
+ * @route  PUT /api/groups/:id
+ * @access Private
+ */
+export const updateGroupDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      guide,
+      members,
+      projectTitle,
+      projectDescription,
+      projectTechnology,
+      status,
+    } = req.body;
+
+    // 1️⃣ Find group first
+    const group = await Group.findById(id);
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found." });
+    }
+
+    // 2️⃣ Handle guide change (if provided)
+    if (guide && guide.toString() !== group.guide?.toString()) {
+      const newGuide = await Guide.findById(guide);
+      if (!newGuide || !newGuide.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or inactive guide.",
+        });
+      }
+
+      // Remove group from old guide (if exists)
+      if (group.guide) {
+        await Guide.findByIdAndUpdate(group.guide, {
+          $pull: { assignedGroups: group._id },
+        });
+      }
+
+      // Add group to new guide
+      await Guide.findByIdAndUpdate(guide, {
+        $addToSet: { assignedGroups: group._id },
+      });
+
+      group.guide = guide;
+    }
+
+    // 3️⃣ Handle members update (if provided)
+    if (members) {
+      if (!Array.isArray(members)) {
+        return res.status(400).json({
+          success: false,
+          message: "Members must be an array.",
+        });
+      }
+
+      if (members.length < 3 || members.length > 4) {
+        return res.status(400).json({
+          success: false,
+          message: "Group must have between 3 and 4 members.",
+        });
+      }
+
+      const resolvedMembers = [];
+      for (const member of members) {
+        let enrollmentId;
+
+        if (typeof member === "string") {
+          // assume it's an ObjectId
+          enrollmentId = member;
+        } else if (member.enrollment || member.enrollmentNumber) {
+          const enrollmentNum = member.enrollment || member.enrollmentNumber;
+          const enrollment = await Enrollment.findOne({
+            enrollmentNumber: enrollmentNum,
+          });
+          if (!enrollment) {
+            return res.status(400).json({
+              success: false,
+              message: `Enrollment ${enrollmentNum} not found.`,
+            });
+          }
+          if (!enrollment.isRegistered) {
+            return res.status(400).json({
+              success: false,
+              message: `Student ${enrollmentNum} is not registered.`,
+            });
+          }
+          enrollmentId = enrollment._id;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid member format.",
+          });
+        }
+
+        resolvedMembers.push(enrollmentId);
+      }
+
+      // Check duplicates
+      if (new Set(resolvedMembers).size !== resolvedMembers.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Duplicate members not allowed.",
+        });
+      }
+
+      group.members = resolvedMembers;
+    }
+
+    // 4️⃣ Update other fields if provided
+    if (projectTitle) group.projectTitle = projectTitle;
+    if (projectDescription) group.projectDescription = projectDescription;
+    if (projectTechnology) group.projectTechnology = projectTechnology;
+    if (status) group.status = status;
+
+    // 5️⃣ Debug — show division state before save
+    console.log("🔍 Division before save:", group.division);
+
+    // 6️⃣ Save safely (skip validation if division missing)
+    if (!group.division) {
+      console.warn(`⚠️ Group ${id} has no division — skipping validation.`);
+      await group.save({ validateBeforeSave: false });
+    } else {
+      await group.save();
+    }
+
+    // 7️⃣ Populate related data for frontend
+    await group.populate([
+      { path: "guide", select: "name email expertise mobile" },
+      { path: "division", select: "course semester year" },
+      { path: "members", select: "name enrollmentNumber" },
+    ]);
+
+    // 8️⃣ Send success response
+    res.status(200).json({
+      success: true,
+      message: "Group updated successfully.",
+      data: group,
+    });
+  } catch (error) {
+    console.error("❌ Error updating group:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating group.",
+    });
+  }
+};
+
+
