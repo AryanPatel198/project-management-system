@@ -25,7 +25,7 @@ function EvaluationParameters() {
   const fetchParameters = async () => {
     try {
       const response = await evaluationParameterAPI.getAll();
-      setParameters(response.data);
+      setParameters(response.data.data);
     } catch {
       setSuccessMessage("Failed to load evaluation parameters!");
       setTimeout(() => setSuccessMessage(""), 3000);

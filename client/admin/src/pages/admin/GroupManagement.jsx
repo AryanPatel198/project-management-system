@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronLeft,
@@ -325,26 +326,34 @@ function GroupManagement() {
       setTimeout(() => setErrorMessage(""), 3000);
       return;
     }
+
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
+
+      // Find guide object by name
       const selectedGuideObj = guides.find((guide) => guide.name === newGuide);
       if (!selectedGuideObj) {
         setErrorMessage("Selected guide not found.");
         setTimeout(() => setErrorMessage(""), 3000);
         return;
       }
+
+      // ✅ Use new API endpoint
       await axios.put(
-        `${API_BASE_URL}/admin/update-group/${selectedGroup._id}`,
+        `${API_BASE_URL}/admin/update-group-guide/${selectedGroup._id}`,
         { guideId: selectedGuideObj._id },
         { headers }
       );
-      // Refetch group
+
+      // ✅ Refetch updated group details
       const response = await axios.get(
         `${API_BASE_URL}/admin/get-group/${selectedGroup._id}`,
         { headers }
       );
+
       setSelectedGroup(response.data.data);
       setShowChangeGuideModal(false);
+
       setSuccessMessage(
         `Guide for ${selectedGroup.name} changed to ${newGuide}!`
       );
@@ -356,7 +365,7 @@ function GroupManagement() {
         "Failed to change guide.";
       setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(""), 3000);
-      console.error("Error changing guide:", error);
+      console.error("❌ Error changing guide:", error);
     }
   };
 

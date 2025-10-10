@@ -53,29 +53,32 @@ export const studentAPI = {
 
 // ✅ Divisions API
 export const divisionAPI = {
-  getAll: (params) => api.get("/divisions", { params }),
-  create: (payload) => api.post("/divisions", payload),
-  updateStatus: (id) => api.patch(`/divisions/${id}/status`),
-  delete: (id) => api.delete(`/divisions/${id}`),
+  getAll: (params) => api.get("/get-divisions", { params }),
+  create: (payload) => api.post("/add-division", payload),
+  updateStatus: (divisionId, payload) =>
+    api.patch(`/update-division-status/${divisionId}`, payload),
+  delete: (id) => api.delete(`/delete-division/${id}`),
 };
 
 // ✅ Enrollments API
 export const enrollmentAPI = {
-  getAll: () => api.get("/enrollments"),
-  getByDivision: (divisionId) => api.get(`/enrollments/division/${divisionId}`),
-  create: (payload) => api.post("/enrollments", payload),
-  generate: (payload) => api.post("/enrollments/generate", payload),
-  delete: (id) => api.delete(`/enrollments/${id}`),
+  getAll: () => api.get("/get-student-enrollments"),
+  getByDivision: (divisionId) =>
+    api.get(`/get-enrollment-by-division/${divisionId}`),
+  create: (payload) => api.post("/add-student-enrollment", payload),
+  generate: (payload) => api.post("/generate-enrollments", payload),
+  delete: (id) => api.delete(`/remove-student/${id}`),
   deleteAllByDivision: (divisionId) =>
-    api.delete(`/enrollments/division/${divisionId}`),
+    api.delete(`/remove-all-students/${divisionId}`),
+  // AddEnroll: (payload) => api.post("/add-student-enrollment", payload),
 };
 
 // ✅ Evaluation Parameters API
 export const evaluationParameterAPI = {
   getAll: () => api.get("/get-evaluation-params"),
-  create: (payload) => api.post("/add-evaluation-params", payload),
-  update: (id, payload) => api.put(`/update-evaluation-params/${id}`, payload),
-  delete: (id) => api.delete(`/evaluation-params/${id}`),
+  create: (payload) => api.post("/add-evaluation-param", payload),
+  update: (id, payload) => api.put(`/update-evaluation-param/${id}`, payload),
+  delete: (id) => api.delete(`/delete-evaluation-param/${id}`),
 };
 
 // ✅ Admin API

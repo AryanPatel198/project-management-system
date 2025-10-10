@@ -121,7 +121,7 @@ function ManageDivisions() {
             statusFilter === "All" ? undefined : statusFilter.toLowerCase(),
         };
         const response = await divisionAPI.getAll(params);
-        setDivisions(response.data);
+        setDivisions(response.data.data);
       } catch (error) {
         setMessage({
           text:
@@ -143,7 +143,7 @@ function ManageDivisions() {
       setLoading(true);
       try {
         const response = await enrollmentAPI.getAll();
-        setEnrollments(response.data);
+        setEnrollments(response.data.data);
       } catch (error) {
         setMessage({
           text:
@@ -164,7 +164,7 @@ function ManageDivisions() {
     "All",
     ...new Set(divisions.map((division) => division.course)),
   ];
-  const statusOptions = ["All", "Active", "Inactive"];
+  const statusOptions = ["All", "active", "inactive"];
 
   // Filtered divisions
   const filteredDivisions = divisions.filter((division) => {
@@ -178,7 +178,7 @@ function ManageDivisions() {
   // Get enrollments for a division
   const getDivisionEnrollments = (divisionId) => {
     return enrollments.filter(
-      (enrollment) => enrollment.divisionId._id.toString() === divisionId
+      (enrollment) => enrollment.division._id.toString() === divisionId
     );
   };
 
@@ -194,14 +194,21 @@ function ManageDivisions() {
   // Toggle status
   const handleToggleStatus = async (division) => {
     try {
-      const response = await divisionAPI.updateStatus(division._id);
+      const newStatus = division.status === "active" ? "inactive" : "active";
+
+      const response = await divisionAPI.updateStatus(division._id, {
+        status: newStatus,
+      });
+
       setDivisions(
-        divisions.map((d) => (d._id === division._id ? response.data : d))
+        divisions.map((d) => (d._id === division._id ? response.data.data : d))
       );
+
       setMessage({
-        text: `Division ${division.course} Sem${division.semester} ${division.year} status updated to ${response.data.status}!`,
+        text: `Division ${division.course} Sem${division.semester} ${division.year} status updated to ${response.data.data.status}!`,
         type: "success",
       });
+
       setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
     } catch (error) {
       setMessage({
@@ -292,7 +299,7 @@ function ManageDivisions() {
       const enrollmentsResponse = await enrollmentAPI.getByDivision(
         selectedDivision._id
       );
-      setEnrollments(enrollmentsResponse.data);
+      setEnrollments(enrollmentsResponse.data.data);
       setShowEnrollmentRangeModal(false);
       setEnrollmentRange({ start: 1, end: 20 });
       setMessage({ text: response.data.message, type: "success" });
@@ -309,29 +316,49 @@ function ManageDivisions() {
   };
 
   // Add enrollment
+  // ManageDivisions.jsx, around line 469
+  // Add enrollment
+  // Add enrollment
   const handleAddEnrollment = async () => {
-    if (!newEnrollment.enrollmentNumber) {
-      setMessage({ text: "Please enter an enrollment number!", type: "error" });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+    // 1. Check for Division ID (Required from previous fix)
+    if (!newEnrollment.divisionId) {
+      setMessage({
+        text: "Division ID is missing. Cannot add enrollment.",
+        type: "error",
+      });
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
       return;
     }
+
+    // 2. Check for Enrollment Number
+    if (!newEnrollment.enrollmentNumber) {
+      setMessage({ text: "Please enter an enrollment number!", type: "error" });
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
+      return;
+    }
+
+    // 3. Check Enrollment Number format
     if (!/^[A-Za-z]+\d{7}$/.test(newEnrollment.enrollmentNumber)) {
       setMessage({
         text: "Enrollment number must be like BCA2025001 (letters followed by 7 digits)!",
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
       return;
     }
+
     try {
       const payload = {
         divisionId: newEnrollment.divisionId,
         enrollmentNumber: newEnrollment.enrollmentNumber,
       };
+
       const response = await enrollmentAPI.create(payload);
+
       setEnrollments([...enrollments, response.data]);
       setShowAddEnrollmentModal(false);
       setNewEnrollment({ divisionId: "", enrollmentNumber: "" });
+
       setMessage({
         text: `Enrollment ${newEnrollment.enrollmentNumber} added successfully!`,
         type: "success",
@@ -344,7 +371,7 @@ function ManageDivisions() {
           (error.response?.data?.message || error.message),
         type: "error",
       });
-      setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+      setTimeout(() => setMessage({ text: "", type: "error" }), 3000); // 🚨 FIXED: Use type: "error" to clear
     }
   };
 
@@ -372,10 +399,15 @@ function ManageDivisions() {
       const response = await enrollmentAPI.deleteAllByDivision(
         selectedDivision._id
       );
+      // Filter out enrollments belonging to the selected division.
+      // Use `e.division._id` for consistency with `getDivisionEnrollments`
       setEnrollments(
-        enrollments.filter((e) => e.divisionId._id !== selectedDivision._id)
+        enrollments.filter((e) => e.division._id !== selectedDivision._id)
       );
+
+      // 🚨 Ensure the modal closes
       setShowDeleteAllEnrollmentsModal(false);
+
       setMessage({ text: response.data.message, type: "success" });
       setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
     } catch (error) {
@@ -950,7 +982,7 @@ function ManageDivisions() {
                 className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition-all duration-300 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once"
                 aria-label="Add enrollment"
               >
-                Add
+                Add YOUR MOM HERE
               </button>
             </div>
           </div>

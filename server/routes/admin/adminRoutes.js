@@ -22,6 +22,20 @@ import {
   getStudentsByGroup,
   updateGroup,
   deleteGroup,
+  updateGroupGuide,
+  getEvaluationParams,
+  updateEvaluationParam,
+  addEvaluationParam,
+  deleteEvaluationParam,
+  getStudentEnrollments,
+  updateDivisionStatus,
+  addDivision,
+  deleteDivision,
+  generateEnrollments,
+  getEnrollmentsByDivision,
+  removeStudentById,
+  removeAllStudentsByDivision,
+  addStudentEnrollment,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
 
@@ -97,5 +111,49 @@ router.get(
   protectAdmin,
   getAvailableStudentsForGroup
 );
+
+// PUT /api/admin/update-group-guide/:id
+router.put("/update-group-guide/:id", protectAdmin, updateGroupGuide);
+
+// GET /api/admin/get-evaluation-params
+router.get("/get-evaluation-params", protectAdmin, getEvaluationParams);
+
+// PUT /api/admin/update-evaluation-param/:id
+router.put("/update-evaluation-param/:id", protectAdmin, updateEvaluationParam);
+
+// POST /api/admin/add-evaluation-param
+router.post("/add-evaluation-param", protectAdmin, addEvaluationParam);
+
+// DELETE /api/admin/delete-evaluation-param/:id
+router.delete(
+  "/delete-evaluation-param/:id",
+  protectAdmin,
+  deleteEvaluationParam
+);
+
+// GET /api/admin/get-student-enrollments
+router.get("/get-student-enrollments", protectAdmin, getStudentEnrollments);
+
+// PATCH /api/admin/update-division-status/:id
+router.patch("/update-division-status/:id", protectAdmin, updateDivisionStatus);
+
+// POST /api/admin/add-division
+router.post("/add-division", protectAdmin, addDivision);
+
+// DELETE /api/admin/delete-division/:id
+router.delete("/delete-division/:id", protectAdmin, deleteDivision);
+
+router.post("/generate-enrollments", generateEnrollments);
+
+router.get("/get-enrollment-by-division/:id", getEnrollmentsByDivision);
+
+// DELETE /api/admin/remove-student/:id
+router.delete("/remove-student/:id", removeStudentById);
+
+// DELETE /api/admin/remove-all-students/:id
+router.delete("/remove-all-students/:id", removeAllStudentsByDivision);
+
+// Add a single student enrollment
+router.post("/add-student-enrollment", addStudentEnrollment);
 
 export default router;

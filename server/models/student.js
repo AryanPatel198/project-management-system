@@ -9,7 +9,7 @@ const studentSchema = new mongoose.Schema(
       unique: true,
       maxlength: 20,
       trim: true,
-      index: true, // fast lookup
+      index: true, // for faster lookup
     },
     name: {
       type: String,
@@ -29,7 +29,7 @@ const studentSchema = new mongoose.Schema(
       maxlength: 15,
     },
     password: {
-      type: String, // hash if using auth
+      type: String, // hashed if used for authentication
     },
     division: {
       type: mongoose.Schema.Types.ObjectId,
@@ -41,23 +41,23 @@ const studentSchema = new mongoose.Schema(
       ref: "Group",
       default: null, // one group per student
     },
-    status: {
-      type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
+    // 🆕 replaced status field with a clean boolean flag
+    isRegistered: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
 );
 
-// Hash password before saving
+// Hash password before saving (if password is set)
 studentSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Compare password helper
+// Password match helper
 studentSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password || "");
 };
