@@ -42,9 +42,9 @@ export default function GuideDashboard() {
           guidePanelAPI.getGuideProfile(guideId)
         ]);
 
-        setAssignedGroups(dashboardData.groups || []);
-        setRecentAnnouncements(announcementsData || []);
-        setGuideProfile(profileData);
+        setAssignedGroups(dashboardData.data.groups || []);
+        setRecentAnnouncements(announcementsData.data || []);
+        setGuideProfile(profileData.data);
         setUseMockData(false);
 
       } catch (apiError) {

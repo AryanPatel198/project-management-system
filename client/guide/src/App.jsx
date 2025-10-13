@@ -143,7 +143,7 @@ function App() {
         {/* <Route path="/admin" element={<Navigate to="/admin/home" replace />} /> */}
 
         {/* -------------------- GUIDE ROUTES -------------------- */}
-        {/* <Route path="/guide/login" element={<GuideLogin />} /> */}
+        <Route path="/guide/login" element={<GuideLogin />} />
         <Route path="/" element={<GuideLogin />} />
         <Route path="/guide/register" element={<GuideRegister />} />
         <Route
