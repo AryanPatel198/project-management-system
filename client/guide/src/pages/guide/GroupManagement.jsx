@@ -105,62 +105,72 @@ export default function GroupManagement() {
   };
 
   const handleEditGroup = async () => {
-    if (selectedGroup && formData.groupName && formData.projectTitle) {
-      try {
-        const guideId = getCurrentGuideId();
+    // alert("hello"); // ❌ REMOVED: distracting test alert
 
-        if (useMockData) {
-          // Mock data fallback
-          const updatedGroups = groups.map((group) =>
-            group.id === selectedGroup.id ? { ...group, ...formData } : group
-          );
-          setGroups(updatedGroups);
-        } else {
-          // API call
-          const updatedGroup = await guidePanelAPI.updateGroup(
-            guideId,
-            selectedGroup.id,
-            formData
-          );
-          setGroups(
-            groups.map((group) =>
-              group.id === selectedGroup.id ? (updatedGroup?.data || updatedGroup) : group
-            )
-          );
-        }
+    // ✅ FIX 1: Trim whitespace from critical fields for validation
+    const trimmedGroupName = formData.groupName.trim();
+    const trimmedProjectTitle = formData.projectTitle.trim();
 
-        setShowEditModal(false);
-        setSelectedGroup(null);
-        setFormData({
-          groupName: "",
-          projectTitle: "",
-          description: "",
-          maxMembers: 4,
-        });
-      } catch (error) {
-        console.error("Error updating group:", error);
-        setError("Failed to update group");
-      }
+    if (!selectedGroup || !trimmedGroupName || !trimmedProjectTitle) {
+      // ✅ FIX 2: Set a specific error message for failed validation
+      setError("Group Name and Project Title cannot be empty.");
+      console.error("Validation Failed: Required fields are empty.");
+      return; // Stop execution if validation fails
     }
-  };
 
-  const handleDeleteGroup = async (groupId) => {
-    if (window.confirm("Are you sure you want to delete this group?")) {
-      try {
-        const guideId = getCurrentGuideId();
+    // Create a clean payload object with trimmed values
+    const payload = {
+      ...formData,
+      groupName: trimmedGroupName,
+      projectTitle: trimmedProjectTitle,
+      description: formData.description.trim(), // Trim description too
+    };
 
-        if (useMockData) {
-          // Mock data fallback
-          setGroups(groups.filter((group) => group.id !== groupId));
-        } else {
-          // API call
-          await guidePanelAPI.deleteGroup(guideId, groupId);
-          setGroups(groups.filter((group) => group.id !== groupId));
-        }
-      } catch (error) {
-        console.error("Error deleting group:", error);
-        setError("Failed to delete group");
+    try {
+      const guideId = getCurrentGuideId();
+
+      if (useMockData) {
+        // Mock data fallback
+        const updatedGroups = groups.map(
+          (
+            group // Use the cleaned payload for the mock update
+          ) =>
+            group.id === selectedGroup.id ? { ...group, ...payload } : group
+        );
+        setGroups(updatedGroups);
+      } else {
+        // API call - Use the cleaned payload
+        const updatedGroup = await guidePanelAPI.updateGroup(
+          guideId,
+          selectedGroup.id,
+          payload
+        );
+        setGroups(
+          groups.map((group) =>
+            group.id === selectedGroup.id
+              ? updatedGroup?.data || updatedGroup
+              : group
+          )
+        );
       }
+
+      // Clear any previous error on success
+      setError(null);
+
+      setShowEditModal(false);
+      setSelectedGroup(null);
+      setFormData({
+        groupName: "",
+        projectTitle: "",
+        description: "",
+        maxMembers: 4,
+      });
+    } catch (error) {
+      console.error("Error updating group:", error); // Set error message on API/logic failure
+      setError(
+        "Failed to update group: " +
+          (error.message || "Check console for details.")
+      );
     }
   };
 
