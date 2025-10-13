@@ -1,20 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, User, Key, Mail, Camera, LogOut, Upload, Phone, Loader2, AlertCircle } from 'lucide-react';
-import { guidePanelAPI, authAPI } from '../../services/api';
-import { currentGuide } from '../../data/mockData';
+// @ts-nocheck
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, User, Key, Mail, LogOut } from 'lucide-react';
+import { authAPI } from '../../services/api';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState({
     name: '',
     email: '',
     department: '',
+    designation: '',
     expertise: '',
-    phone: '',
-    profileImage: null,
   });
 
   const [passwords, setPasswords] = useState({
@@ -25,141 +23,74 @@ export default function Profile() {
 
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [useMockData, setUseMockData] = useState(false);
 
-  // Get current guide ID from localStorage or use mock data
-  const getCurrentGuideId = () => {
-    const user = authAPI.getCurrentUser();
-    return user?.id || 'guide1'; // fallback to mock guide ID
-  };
-
-  // Fetch profile data from API
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setInitialLoading(true);
-        setError(null);
-        
-        const guideId = getCurrentGuideId();
-        
-        // Try to fetch from API first
-        const profileData = await guidePanelAPI.getGuideProfile(guideId);
-        setProfile(p => ({
-          ...p,
-          name: (profileData?.data?.name) || '',
-          email: (profileData?.data?.email) || '',
-          department: (profileData?.data?.department) || '',
-          expertise: (profileData?.data?.expertise) || '',
-          phone: (profileData?.data?.phone) || '',
-        }));
-        setUseMockData(false);
-        
-      } catch (apiError) {
-        console.warn('API not available, falling back to mock data:', apiError);
-        
-        // Fallback to mock data
-        const user = currentGuide;
-        setProfile(p => ({
-          ...p,
-          name: user.name || '',
-          email: user.email || '',
-          department: user.department || '',
-          expertise: user.expertise || '',
-          phone: user.phone || '',
-        }));
-        setUseMockData(true);
-        setError('Using mock data - API not available');
-        
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    fetchProfile();
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      setProfile(p => ({
+        ...p,
+        name: user.name || '',
+        email: user.email || '',
+        department: user.department || '',
+        designation: user.designation || '',
+        expertise: user.expertise || '',
+      }));
+    }
   }, []);
 
   const handleProfileSave = async () => {
+    setLoading(true);
+    setMessage('');
+
     try {
-      setLoading(true);
-      setError(null);
+      const updatedProfile = await authAPI.updateGuideProfile(profile);
       
-      const guideId = getCurrentGuideId();
-      
-      if (useMockData) {
-        // Mock data fallback
-        setTimeout(() => {
-          setLoading(false);
-          setMessage('Profile updated (demo)');
-          setTimeout(() => setMessage(''), 2000);
-        }, 600);
-      } else {
-        // API call
-        await guidePanelAPI.updateGuideProfile(guideId, profile);
-        setLoading(false);
-        setMessage('Profile updated successfully');
-        setTimeout(() => setMessage(''), 2000);
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
       setLoading(false);
-      setError('Failed to update profile');
+      setMessage('Profile updated successfully!');
+      
+      // Update user data in localStorage
+      localStorage.setItem('user', JSON.stringify(updatedProfile.data));
+
+      setTimeout(() => setMessage(''), 3000);
+
+    } catch (error) {
+      setLoading(false);
+      setMessage(error.message || 'Failed to update profile.');
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
   const handlePasswordSubmit = async () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setMessage('Passwords do not match!');
-      setTimeout(() => setMessage(''), 2000);
+      setMessage('New passwords do not match!');
+      setTimeout(() => setMessage(''), 3000);
       return;
     }
     if (passwords.newPassword.length < 6) {
-      setMessage('New password must be at least 6 characters');
-      setTimeout(() => setMessage(''), 2000);
+      setMessage('New password must be at least 6 characters long.');
+      setTimeout(() => setMessage(''), 3000);
       return;
     }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (useMockData) {
-        // Mock data fallback
-        setTimeout(() => {
-          setLoading(false);
-          setMessage('Password changed (demo)');
-          setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-          setTimeout(() => setMessage(''), 2000);
-        }, 600);
-      } else {
-        // API call
-        await authAPI.changeGuidePassword(passwords);
-        setLoading(false);
-        setMessage('Password changed successfully');
-        setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        setTimeout(() => setMessage(''), 2000);
-      }
-    } catch (error) {
-      console.error('Error changing password:', error);
-      setLoading(false);
-      setError('Failed to change password');
-    }
-  };
 
-  // @ts-ignore
-  const handleImageUpload = (event) => {
-    const file = event.target.files ? event.target.files[0] : null;
-    if (file) {
-      const reader = new FileReader();
-       reader.onload = (e) => {
-        // @ts-ignore
-        if (e.target && e.target.result) {
-          // @ts-ignore
-          setProfile((prev) => ({ ...prev, profileImage: e.target.result }));
-        }
-      };
-      reader.readAsDataURL(file);
+    setLoading(true);
+    setMessage('');
+
+    try {
+      await authAPI.changeGuidePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      });
+      
+      setLoading(false);
+      setMessage('Password changed successfully!');
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setMessage(''), 3000);
+
+    } catch (error) {
+      setLoading(false);
+      setMessage(error.message || 'Failed to change password.');
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
@@ -207,71 +138,9 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Error State */}
-      {error && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-red-500/20 backdrop-blur-md text-red-400 font-semibold px-6 py-3 rounded-lg border border-red-400/30 z-50">
-          <div className="flex items-center gap-3">
-            <AlertCircle size={20} />
-            {error}
-          </div>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {initialLoading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 size={48} className="text-teal-400 animate-spin" />
-            <p className="text-white text-lg">Loading profile...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content - Only show when not loading */}
-      {!initialLoading && (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-              <User size={24} className="text-white mr-3" /> Profile Photo
-            </h2>
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center overflow-hidden">
-                  {profile.profileImage ? (
-                    <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <User size={48} className="text-white/60" />
-                  )}
-                </div>
-                // @ts-ignore
-                <button
-                  // @ts-ignore
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-teal-500 text-white p-2 rounded-full border-2 border-white/30 hover:scale-110 transition"
-                >
-                  <Camera size={16} />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </div>
-              // @ts-ignore
-              <button
-                // @ts-ignore
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center bg-white/10 text-white py-2 px-4 rounded-lg border border-white/30 hover:bg-white/20 transition"
-              >
-                <Upload size={18} className="mr-2" /> Upload Photo
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 lg:col-span-2">
+          <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 lg:col-span-3">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
               <User size={24} className="text-white mr-3" /> Profile Information
             </h2>
@@ -310,6 +179,16 @@ export default function Profile() {
                 />
               </div>
               <div>
+                <label className="block text-lg font-semibold text-white mb-2">Designation</label>
+                <input
+                  type="text"
+                  value={profile.designation}
+                  onChange={(e) => setProfile((p) => ({ ...p, designation: e.target.value }))}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Enter your designation"
+                />
+              </div>
+              <div>
                 <label className="block text-lg font-semibold text-white mb-2">Expertise</label>
                 <input
                   type="text"
@@ -318,19 +197,6 @@ export default function Profile() {
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
                   placeholder="Enter your expertise"
                 />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-lg font-semibold text-white mb-2">Phone Number</label>
-                <div className="flex items-center bg-white/10 rounded-lg border border-white/20 px-3">
-                  <Phone size={18} className="text-white/80 mr-2" />
-                  <input
-                    type="tel"
-                    value={profile.phone}
-                    onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-                    className="w-full py-3 bg-transparent text-white outline-none"
-                    placeholder="Enter your phone number"
-                  />
-                </div>
               </div>
             </div>
 
@@ -400,7 +266,6 @@ export default function Profile() {
           </div>
         </div>
       </div>
-      )}
     </div>
   );
 }

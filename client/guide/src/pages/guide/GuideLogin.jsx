@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { BookOpen, Users2, Award, BarChart3, AlertCircle } from 'lucide-react';

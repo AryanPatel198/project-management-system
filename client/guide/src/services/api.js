@@ -1,53 +1,50 @@
-import axios from 'axios';
-
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor to add auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('API Error:', error);
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/guide/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Helper function to handle API requests (keeping for backward compatibility)
+// Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
+  
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  // Add Authorization header if token exists
+  if (token) {
+    defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const config = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
   try {
-    const response = await apiClient.request({
-      url: endpoint,
-      ...options,
-    });
-    return response.data;
+    const response = await fetch(url, config);
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error('Server returned non-JSON response. Please check if the backend server is running.');
+    }
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Something went wrong');
+    }
+    
+    return data;
   } catch (error) {
+    console.error('API Error:', error);
     throw error;
   }
 };
@@ -58,7 +55,7 @@ export const authAPI = {
   login: async (credentials) => {
     const response = await apiRequest('/auth/login', {
       method: 'POST',
-      data: credentials,
+      body: JSON.stringify(credentials),
     });
     
     // Return the data in the format expected by the frontend
@@ -72,7 +69,7 @@ export const authAPI = {
   register: async (userData) => {
     const response = await apiRequest('/auth/register', {
       method: 'POST',
-      data: userData,
+      body: JSON.stringify(userData),
     });
     
     // Return the data in the format expected by the frontend
@@ -86,7 +83,7 @@ export const authAPI = {
   guideLogin: async (credentials) => {
     const response = await apiRequest('/auth/guide/login', {
       method: 'POST',
-      data: credentials,
+      body: JSON.stringify(credentials),
     });
     
     // Return the data in the format expected by the frontend
@@ -100,7 +97,7 @@ export const authAPI = {
   guideRegister: async (userData) => {
     const response = await apiRequest('/auth/guide/register', {
       method: 'POST',
-      data: userData,
+      body: JSON.stringify(userData),
     });
     
     // Return the data in the format expected by the frontend
@@ -129,8 +126,12 @@ export const authAPI = {
 
   // Get current guide profile
   getGuideProfile: async () => {
+    const token = localStorage.getItem('token');
     const response = await apiRequest('/auth/guide/me', {
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     
     return response.data;
@@ -138,9 +139,14 @@ export const authAPI = {
 
   // Update guide profile
   updateGuideProfile: async (profileData) => {
+    const token = localStorage.getItem('token');
     const response = await apiRequest('/auth/guide/me', {
       method: 'PUT',
-      data: profileData
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(profileData)
     });
     
     return response.data;
@@ -148,9 +154,14 @@ export const authAPI = {
 
   // Change guide password
   changeGuidePassword: async (passwordData) => {
+    const token = localStorage.getItem('token');
     const response = await apiRequest('/auth/guide/change-password', {
       method: 'PUT',
-      data: passwordData
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(passwordData)
     });
     
     return response.data;
@@ -163,15 +174,15 @@ export const groupAPI = {
   getGroupsByGuide: (guideId) => apiRequest(`/groups/guide/${guideId}`),
   createGroup: (data) => apiRequest('/groups', {
     method: 'POST',
-    data: data,
+    body: JSON.stringify(data),
   }),
   updateGroup: (id, data) => apiRequest(`/groups/${id}`, {
     method: 'PUT',
-    data: data,
+    body: JSON.stringify(data),
   }),
   updateProjectDetails: (id, data) => apiRequest(`/groups/${id}/project`, {
     method: 'PUT',
-    data: data,
+    body: JSON.stringify(data),
   }),
   deleteGroup: (id) => apiRequest(`/groups/${id}`, {
     method: 'DELETE',
@@ -183,11 +194,11 @@ export const guideAPI = {
   getGuideById: (id) => apiRequest(`/guides/${id}`),
   createGuide: (data) => apiRequest('/guides', {
     method: 'POST',
-    data: data,
+    body: JSON.stringify(data),
   }),
   updateGuide: (id, data) => apiRequest(`/guides/${id}`, {
     method: 'PUT',
-    data: data,
+    body: JSON.stringify(data),
   }),
   deleteGuide: (id) => apiRequest(`/guides/${id}`, {
     method: 'DELETE',
@@ -199,109 +210,15 @@ export const projectAPI = {
   getProjectById: (id) => apiRequest(`/projects/${id}`),
   createProject: (data) => apiRequest('/projects', {
     method: 'POST',
-    data: data,
+    body: JSON.stringify(data),
   }),
   updateProject: (id, data) => apiRequest(`/projects/${id}`, {
     method: 'PUT',
-    data: data,
+    body: JSON.stringify(data),
   }),
   deleteProject: (id) => apiRequest(`/projects/${id}`, {
     method: 'DELETE',
   }),
 };
-
-// Guide-specific API functions
-export const guidePanelAPI = {
-  // Guide Profile Management
-  getGuideProfile: (guideId) => apiRequest(`/guides/${guideId}/profile`),
-  updateGuideProfile: (guideId, data) => apiRequest(`/guides/${guideId}/profile`, {
-    method: 'PUT',
-    data: data,
-  }),
-  
-  // Guide Dashboard Data
-  getGuideDashboard: (guideId) => apiRequest(`/guides/${guideId}/dashboard`),
-  getGuideStats: (guideId) => apiRequest(`/guides/${guideId}/stats`),
-  
-  // Guide's Students Management
-  getGuideStudents: (guideId) => apiRequest(`/guides/${guideId}/students`),
-  getStudentById: (guideId, studentId) => apiRequest(`/guides/${guideId}/students/${studentId}`),
-  
-  // Guide's Groups Management
-  getGuideGroups: (guideId) => apiRequest(`/guides/${guideId}/groups`),
-  getGroupById: (guideId, groupId) => apiRequest(`/guides/${guideId}/groups/${groupId}`),
-  createGroup: (guideId, data) => apiRequest(`/guides/${guideId}/groups`, {
-    method: 'POST',
-    data: data,
-  }),
-  updateGroup: (guideId, groupId, data) => apiRequest(`/guides/${guideId}/groups/${groupId}`, {
-    method: 'PUT',
-    data: data,
-  }),
-  deleteGroup: (guideId, groupId) => apiRequest(`/guides/${guideId}/groups/${groupId}`, {
-    method: 'DELETE',
-  }),
-  
-  // Guide's Projects Management
-  getGuideProjects: (guideId) => apiRequest(`/guides/${guideId}/projects`),
-  getProjectById: (guideId, projectId) => apiRequest(`/guides/${guideId}/projects/${projectId}`),
-  approveProject: (guideId, projectId, data) => apiRequest(`/guides/${guideId}/projects/${projectId}/approve`, {
-    method: 'POST',
-    data: data,
-  }),
-  rejectProject: (guideId, projectId, data) => apiRequest(`/guides/${guideId}/projects/${projectId}/reject`, {
-    method: 'POST',
-    data: data,
-  }),
-  
-  // Guide's Feedback Management
-  getGuideFeedback: (guideId) => apiRequest(`/guides/${guideId}/feedback`),
-  getFeedbackById: (guideId, feedbackId) => apiRequest(`/guides/${guideId}/feedback/${feedbackId}`),
-  createFeedback: (guideId, data) => apiRequest(`/guides/${guideId}/feedback`, {
-    method: 'POST',
-    data: data,
-  }),
-  updateFeedback: (guideId, feedbackId, data) => apiRequest(`/guides/${guideId}/feedback/${feedbackId}`, {
-    method: 'PUT',
-    data: data,
-  }),
-  deleteFeedback: (guideId, feedbackId) => apiRequest(`/guides/${guideId}/feedback/${feedbackId}`, {
-    method: 'DELETE',
-  }),
-  
-  // Guide's Evaluations
-  getGuideEvaluations: (guideId) => apiRequest(`/guides/${guideId}/evaluations`),
-  getEvaluationById: (guideId, evaluationId) => apiRequest(`/guides/${guideId}/evaluations/${evaluationId}`),
-  createEvaluation: (guideId, data) => apiRequest(`/guides/${guideId}/evaluations`, {
-    method: 'POST',
-    data: data,
-  }),
-  updateEvaluation: (guideId, evaluationId, data) => apiRequest(`/guides/${guideId}/evaluations/${evaluationId}`, {
-    method: 'PUT',
-    data: data,
-  }),
-  
-  // Guide's Announcements
-  getGuideAnnouncements: (guideId) => apiRequest(`/guides/${guideId}/announcements`),
-  getAnnouncementById: (guideId, announcementId) => apiRequest(`/guides/${guideId}/announcements/${announcementId}`),
-  
-  // Guide's Schedules/Meetings
-  getGuideSchedules: (guideId) => apiRequest(`/guides/${guideId}/schedules`),
-  getScheduleById: (guideId, scheduleId) => apiRequest(`/guides/${guideId}/schedules/${scheduleId}`),
-  createSchedule: (guideId, data) => apiRequest(`/guides/${guideId}/schedules`, {
-    method: 'POST',
-    data: data,
-  }),
-  updateSchedule: (guideId, scheduleId, data) => apiRequest(`/guides/${guideId}/schedules/${scheduleId}`, {
-    method: 'PUT',
-    data: data,
-  }),
-  deleteSchedule: (guideId, scheduleId) => apiRequest(`/guides/${guideId}/schedules/${scheduleId}`, {
-    method: 'DELETE',
-  }),
-};
-
-// Export the axios instance for direct use if needed
-export { apiClient };
 
 export default apiRequest;

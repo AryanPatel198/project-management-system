@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Briefcase, Code, Edit, X, ChevronDown, CheckCircle, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Briefcase, Code, Users, Trash2, Edit, X, ChevronDown, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Reusable FilterDropdown component
@@ -42,7 +41,7 @@ const FilterDropdown = ({ title, options, selected, onSelect, className = '' }) 
                 key={index}
                 onClick={() => handleSelect(option)}
                 className={`px-4 py-2 cursor-pointer transition-colors duration-200 text-white ${
-                  selected === option ? 'bg-teal-400/30 font-bold' : 'hover:bg-teal-400/30'
+                  selected === option ? 'bg-accent-teal font-bold' : 'hover:bg-accent-teal/30'
                 }`}
               >
                 {option}
@@ -55,10 +54,10 @@ const FilterDropdown = ({ title, options, selected, onSelect, className = '' }) 
   );
 };
 
-function ProjectApproval() {
+function ProjectManagement() {
   const navigate = useNavigate();
 
-  // Mock project data - adapted for guide view (only projects assigned to guide's groups)
+  // Mock project data
   const [projects, setProjects] = useState([
     {
       id: 'p1',
@@ -119,7 +118,8 @@ function ProjectApproval() {
 
   // State for UI
   const [selectedProject, setSelectedProject] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddEditModal, setShowAddEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editProject, setEditProject] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -128,22 +128,6 @@ function ProjectApproval() {
   // Filter options
   const statusOptions = ['All', 'Not Started', 'In Progress', 'Completed'];
   const techOptions = ['All', ...new Set(projects.map(project => project.technology))];
-
-  // Available technologies for editing
-  const availableTechnologies = [
-    'MERN Stack',
-    'Flutter',
-    'PHP / MySQL',
-    'Python / ML',
-    'React Native',
-    'Node.js',
-    'Java Spring',
-    'Angular',
-    'Vue.js',
-    'Django',
-    'Laravel',
-    'Express.js'
-  ];
 
   // Filter projects based on selected filters
   const filteredProjects = projects.filter(project => {
@@ -171,7 +155,7 @@ function ProjectApproval() {
             <CheckCircle
               key={param.id}
               size={20}
-              className={isCompleted ? 'text-teal-400' : 'text-white/50'}
+              className={isCompleted ? 'text-accent-teal' : 'text-white/50'}
               title={isCompleted ? `${param.name} completed` : `${param.name} not completed`}
             />
           );
@@ -203,7 +187,7 @@ function ProjectApproval() {
 
   // Handle back navigation
   const handleBack = () => {
-    navigate('/guide/dashboard');
+    navigate('/home');
   };
 
   // Handle view details
@@ -216,10 +200,10 @@ function ProjectApproval() {
     setSelectedProject(null);
   };
 
-  // Open edit modal
-  const openEditModal = (project) => {
+  // Open edit modal (only for existing projects)
+  const openAddEditModal = (project) => {
     setEditProject({ ...project });
-    setShowEditModal(true);
+    setShowAddEditModal(true);
   };
 
   // Handle form changes
@@ -228,59 +212,55 @@ function ProjectApproval() {
     setEditProject(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle save project (guides can edit title, description, and technology)
+  // Handle save project (edit only)
   const handleSaveProject = () => {
     if (!editProject.title || !editProject.description || !editProject.technology) {
       setSuccessMessage('Please fill all required fields!');
       setTimeout(() => setSuccessMessage(''), 3000);
       return;
     }
-    // Update existing project (guides can edit title, description, and technology)
-    setProjects(projects.map(p => (p.id === editProject.id ? {
-      ...p,
-      title: editProject.title,
-      description: editProject.description,
-      technology: editProject.technology
-    } : p)));
-    setSelectedProject({
-      ...selectedProject,
-      title: editProject.title,
-      description: editProject.description,
-      technology: editProject.technology
-    });
+    // Edit existing project
+    setProjects(projects.map(p => (p.id === editProject.id ? { ...editProject } : p)));
+    setSelectedProject(editProject);
     setSuccessMessage(`Project "${editProject.title}" updated successfully!`);
-    setShowEditModal(false);
+    setShowAddEditModal(false);
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
-  // Handle provide feedback navigation
-  const handleProvideFeedback = (project) => {
-    navigate('/guide/feedback', { state: { project } });
+  // Handle delete project
+  const handleDeleteProject = () => {
+    setProjects(projects.filter(p => p.id !== selectedProject.id));
+    setProjectEvaluations(projectEvaluations.filter(evaluation => evaluation.projectId !== selectedProject.id));
+    setSelectedProject(null);
+    setShowDeleteModal(false);
+    setSuccessMessage(`Project "${selectedProject.title}" deleted successfully!`);
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   // Render detailed view
   const renderDetailsView = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <button
           onClick={handleBackToList}
-          className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+          className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
         >
-          <ChevronLeft size={18} className="mr-2" /> Back to Projects
+          <ChevronLeft size={20} className="mr-2 text-white" /> Back to Projects
         </button>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-lg">
+        {/* Changed the main title to display the assigned group name */}
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg flex-grow text-center">
           {selectedProject.assignedGroup}
         </h1>
         <button
-          onClick={() => handleProvideFeedback(selectedProject)}
-          className="flex items-center bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+          onClick={() => setShowDeleteModal(true)}
+          className="flex items-center bg-red-500/80 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-red-600 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
         >
-          <MessageSquare size={18} className="mr-2" /> Provide Feedback
+          <Trash2 size={20} className="mr-2 text-white" /> Delete Project
         </button>
       </div>
 
-      <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 space-y-6">
-        <h2 className="text-2xl font-bold text-white">Project Details</h2>
+      <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30">
+        <h2 className="text-2xl font-bold text-white mb-4">Project Details</h2>
         <div className="space-y-4 text-white/90">
           <div className="flex items-center">
             <Briefcase size={20} className="mr-3 text-white" />
@@ -304,14 +284,20 @@ function ProjectApproval() {
               {getEvaluationIcons(selectedProject.id)}
             </div>
           </div>
+          {/* Removed the assigned group details as requested */}
+          {/* <div>
+            <Users size={20} className="mr-3 text-white" />
+            <p className="font-semibold">Assigned Group:</p>
+            <span className="ml-2">{selectedProject.assignedGroup || 'Unassigned'}</span>
+          </div> */}
           <div>
             <p className="font-semibold mb-1">Description:</p>
             <p className="text-lg">{selectedProject.description}</p>
           </div>
         </div>
-        <div>
+        <div className="mt-8">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
-            <CheckCircle size={20} className="mr-3 text-white" /> Project Evaluations
+            <CheckCircle size={20} className="mr-3 text-white" /> Evaluations
           </h2>
           {evaluationParameters.length > 0 ? (
             <div className="space-y-4">
@@ -324,7 +310,7 @@ function ProjectApproval() {
                         evaluation => evaluation.projectId === selectedProject.id && evaluation.parameterId === param.id
                       )?.isCompleted || false}
                       onChange={() => handleEvaluationToggle(selectedProject.id, param.id)}
-                      className="h-5 w-5 text-teal-400 focus:ring-teal-400 border-white/20 bg-white/10 rounded"
+                      className="h-5 w-5 text-accent-teal focus:ring-accent-teal border-white/20 bg-white/10 rounded"
                     />
                     <div className="ml-3">
                       <p className="text-lg font-semibold text-white">{param.name}</p>
@@ -338,12 +324,12 @@ function ProjectApproval() {
             <p className="text-white/70">No evaluation parameters defined.</p>
           )}
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-6">
           <button
-            onClick={() => openEditModal(selectedProject)}
-            className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+            onClick={() => openAddEditModal(selectedProject)}
+            className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
           >
-            <Edit size={18} className="mr-2" /> Edit Project Details
+            <Edit size={20} className="mr-2 text-white" /> Edit Project
           </button>
         </div>
       </div>
@@ -352,21 +338,32 @@ function ProjectApproval() {
 
   // Render list view
   const renderListView = () => (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 justify-center">
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <button
+          onClick={handleBack}
+          className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
+        >
+          <ChevronLeft size={20} className="mr-2 text-white" /> Back to Dashboard
+        </button>
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg flex-grow text-center">
+          Manage <span className="text-accent-teal">Projects</span>
+        </h1>
+        <div className="w-24"></div> {/* Placeholder to balance layout */}
+      </div>
+
+      <div className="flex flex-wrap gap-4 mb-6 justify-center">
         <FilterDropdown
           title="Status"
           options={statusOptions}
           selected={statusFilter}
           onSelect={setStatusFilter}
-          className="w-40"
         />
         <FilterDropdown
           title="Technology"
           options={techOptions}
           selected={techFilter}
           onSelect={setTechFilter}
-          className="w-40"
         />
       </div>
 
@@ -376,7 +373,7 @@ function ProjectApproval() {
             <div
               key={project.id}
               onClick={() => handleViewDetails(project)}
-              className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 flex flex-col justify-between cursor-pointer hover:scale-[1.03] transition-all duration-200"
+              className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 flex flex-col justify-between cursor-pointer hover:scale-[1.03] transition-all duration-200 animate-fade-in-up"
               style={{ animationDelay: `${index * 0.15}s` }}
             >
               <div>
@@ -419,153 +416,158 @@ function ProjectApproval() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans">
-      {/* Header */}
-      <div className="sticky top-0 w-full bg-white/20 backdrop-blur-md border-b border-white/30 shadow-glow z-10 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
-          >
-            <ChevronLeft size={18} className="mr-2" /> Back to Dashboard
-          </button>
-
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-lg">
-            Project <span className="text-teal-400">Approvals</span>
-          </h1>
-
-          <div className="w-24"></div> {/* Spacer for balance */}
+    <div className="min-h-screen flex flex-col items-center bg-gray-900 font-sans">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md text-accent-teal font-semibold px-6 py-3 rounded-lg shadow-glow border border-white/30 z-50 animate-fade-in-down">
+          {successMessage}
         </div>
-      </div>
+      )}
 
-      {/* Content */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Success Message */}
-        {successMessage && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md text-teal-400 font-semibold px-6 py-3 rounded-lg shadow-glow border border-white/30 z-50 animate-fade-in-down">
-            {successMessage}
-          </div>
-        )}
+      {selectedProject ? renderDetailsView() : renderListView()}
 
-        {selectedProject ? renderDetailsView() : renderListView()}
-
-        {/* Edit Project Modal (Limited for Guides) */}
-        {showEditModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 w-full max-w-md relative">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="absolute top-4 right-4 text-white hover:text-teal-400 transition duration-200"
-              >
-                <X size={24} className="text-white" />
-              </button>
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">Edit Project Details</h2>
-
-              {/* Project Details Section - Read Only */}
-              <div className="bg-white/10 p-4 rounded-2xl border border-white/20 mb-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Project Details</h3>
-                <div className="space-y-3 text-white/90">
-                  <div className="flex items-center">
-                    <Briefcase size={18} className="mr-3 text-white" />
-                    <p className="font-semibold">Title:</p>
-                    <span className="ml-2">{editProject.title}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Code size={18} className="mr-3 text-white" />
-                    <p className="font-semibold">Technology:</p>
-                    <span className="ml-2">{editProject.technology}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-white text-base mr-3">📊</span>
-                    <p className="font-semibold">Status:</p>
-                    <span className="ml-2">{editProject.status}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-white text-base mr-3">📈</span>
-                    <p className="font-semibold">Progress:</p>
-                    <div className="ml-2">
-                      {getEvaluationIcons(editProject.id)}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-semibold mb-1">Description:</p>
-                    <p className="text-sm bg-white/5 p-2 rounded">{editProject.description}</p>
-                  </div>
-                </div>
+      {/* Edit Project Modal */}
+      {showAddEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-glow border border-white/30 w-full max-w-md relative">
+            <button
+              onClick={() => setShowAddEditModal(false)}
+              className="absolute top-4 right-4 text-white hover:text-accent-teal transition duration-200"
+            >
+              <X size={24} className="text-white" />
+            </button>
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">Edit Project</h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="title" className="block text-lg font-semibold text-white mb-2">
+                  Title
+                </label>
+                <input
+                  id="title"
+                  name="title"
+                  type="text"
+                  value={editProject.title}
+                  onChange={handleFormChange}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200"
+                  placeholder="Enter project title"
+                />
               </div>
-
-              {/* Editable Fields */}
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="title" className="block text-lg font-semibold text-white mb-2">
-                    Title
-                  </label>
-                  <input
-                    id="title"
-                    name="title"
-                    type="text"
-                    value={editProject.title}
-                    onChange={handleFormChange}
-                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400 transition duration-200"
-                    placeholder="Enter project title"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="technology" className="block text-lg font-semibold text-white mb-2">
-                    Technology
-                  </label>
-                  <select
-                    id="technology"
-                    name="technology"
-                    value={editProject.technology}
-                    onChange={handleFormChange}
-                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400 transition duration-200"
-                  >
-                    {availableTechnologies.map(tech => (
-                      <option key={tech} value={tech} className="bg-gray-800 text-white">
-                        {tech}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="description" className="block text-lg font-semibold text-white mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={editProject.description}
-                    onChange={handleFormChange}
-                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400 transition duration-200"
-                    placeholder="Enter project description"
-                    rows="4"
-                  />
-                </div>
-                <div className="text-sm text-white/70">
-                  <p>Note: Status can only be modified by administrators.</p>
-                </div>
+              <div>
+                <label htmlFor="description" className="block text-lg font-semibold text-white mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={editProject.description}
+                  onChange={handleFormChange}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200"
+                  placeholder="Enter project description"
+                  rows="4"
+                />
               </div>
-              <div className="flex justify-end gap-4 mt-6">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="flex items-center bg-gray-600/80 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 border border-white/30"
+              <div>
+                <label htmlFor="technology" className="block text-lg font-semibold text-white mb-2">
+                  Technology
+                </label>
+                <input
+                  id="technology"
+                  name="technology"
+                  type="text"
+                  value={editProject.technology}
+                  onChange={handleFormChange}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200"
+                  placeholder="Enter technology"
+                />
+              </div>
+              <div>
+                <label htmlFor="status" className="block text-lg font-semibold text-white mb-2">
+                  Status
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  value={editProject.status}
+                  onChange={handleFormChange}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200 appearance-none cursor-pointer"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300b8d4'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundSize: '1.5em'
+                  }}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveProject}
-                  className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 border border-white/30"
-                >
-                  Save Changes
-                </button>
+                  {statusOptions.map(status => (
+                    <option key={status} value={status} className="text-white bg-gray-800">{status}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="assignedGroup" className="block text-lg font-semibold text-white mb-2">
+                  Assigned Group
+                </label>
+                <input
+                  id="assignedGroup"
+                  name="assignedGroup"
+                  type="text"
+                  value={editProject.assignedGroup}
+                  onChange={handleFormChange}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200"
+                  placeholder="Enter group name (optional)"
+                />
               </div>
             </div>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setShowAddEditModal(false)}
+                className="flex items-center bg-gray-600/80 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProject}
+                className="flex items-center bg-gradient-to-r from-accent-teal to-cyan-400 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-glow border border-white/30 w-full max-w-md relative">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute top-4 right-4 text-white hover:text-accent-teal transition duration-200"
+            >
+              <X size={24} className="text-white" />
+            </button>
+            <h2 className="text-2xl font-bold text-white mb-6 text-center">Confirm Deletion</h2>
+            <p className="text-white/90 text-center mb-6">
+              Are you sure you want to delete the project <span className="font-semibold text-accent-teal">"{selectedProject.title}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-center gap-4 mt-6">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex items-center bg-gray-600/80 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProject}
+                className="flex items-center bg-red-500/80 text-white py-2 px-6 sm:px-4 rounded-lg font-semibold hover:bg-red-600 hover:scale-105 transition duration-200 shadow-glow border border-white/30 backdrop-blur-md"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default ProjectApproval;
+export default ProjectManagement;

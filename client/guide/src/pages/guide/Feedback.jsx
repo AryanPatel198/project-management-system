@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+// @ts-nocheck
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, MessageSquare, Send, Search, Filter, Star, Clock, User } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Search, Star, User, Users, Trash2 } from 'lucide-react';
 
 export default function Feedback() {
   const navigate = useNavigate();
   const [feedbacks, setFeedbacks] = useState([
     {
       id: 'f1',
-      studentName: 'Ananya Sharma',
       groupName: 'Alpha Team',
       project: 'E-commerce Platform',
       feedback: 'Excellent work on the authentication module. The implementation is clean and follows best practices.',
@@ -18,7 +18,6 @@ export default function Feedback() {
     },
     {
       id: 'f2',
-      studentName: 'Rahul Verma',
       groupName: 'Beta Squad',
       project: 'Real-time Chat App',
       feedback: 'Good progress on the backend. Consider improving error handling and user validation.',
@@ -29,7 +28,6 @@ export default function Feedback() {
     },
     {
       id: 'f3',
-      studentName: 'Neha Singh',
       groupName: 'Project Phoenix',
       project: 'AI Recommendation System',
       feedback: 'Outstanding work! The algorithm implementation is innovative and well-documented.',
@@ -41,13 +39,12 @@ export default function Feedback() {
   ]);
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterRating, setFilterRating] = useState('All');
 
   const [newFeedback, setNewFeedback] = useState({
-    studentName: '',
     groupName: '',
     project: '',
     feedback: '',
@@ -55,35 +52,51 @@ export default function Feedback() {
     recommendations: ''
   });
 
-  const availableStudents = [
-    { name: 'Ananya Sharma', group: 'Alpha Team', project: 'E-commerce Platform' },
-    { name: 'Rahul Verma', group: 'Beta Squad', project: 'Real-time Chat App' },
-    { name: 'Neha Singh', group: 'Project Phoenix', project: 'AI Recommendation System' },
-    { name: 'Vikram Rao', group: 'Quantum Coders', project: 'Online Learning System' },
-    { name: 'Priya Patel', group: 'Innovation Hub', project: 'Smart City Dashboard' }
+  const availableGroups = [
+    { name: 'Alpha Team', project: 'E-commerce Platform' },
+    { name: 'Beta Squad', project: 'Real-time Chat App' },
+    { name: 'Project Phoenix', project: 'AI Recommendation System' },
+    { name: 'Quantum Coders', project: 'Online Learning System' },
+    { name: 'Innovation Hub', project: 'Smart City Dashboard' }
   ];
 
-  const filteredFeedbacks = feedbacks.filter(feedback => {
-    const matchesSearch = feedback.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         feedback.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const handleDelete = (id) => {
+    if (window.confirm('Are you sure you want to delete this feedback? This action cannot be undone.')) {
+      setFeedbacks(prevFeedbacks => prevFeedbacks.filter(fb => fb.id !== id));
+    }
+  };
+
+  const filteredFeedbacks = feedbacks.filter((feedback) => {
+    const matchesSearch = feedback.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          feedback.project.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'All' || feedback.status === filterStatus;
-    const matchesRating = filterRating === 'All' || feedback.rating === parseInt(filterRating);
+    const matchesRating = filterRating === 'All' || feedback.rating === parseInt(filterRating, 10);
     return matchesSearch && matchesStatus && matchesRating;
   });
 
   const submitFeedback = () => {
-    if (newFeedback.studentName && newFeedback.feedback) {
-      const feedback = {
-        id: `f${Date.now()}`,
+    if (newFeedback.groupName && newFeedback.feedback) {
+      const newFeedbackItem = {
+        id: selectedGroup || `f${Date.now()}`,
         ...newFeedback,
         status: 'Submitted',
         date: new Date().toISOString().split('T')[0],
         response: null
       };
-      setFeedbacks([...feedbacks, feedback]);
+
+      if (selectedGroup) {
+        // Update existing feedback
+        setFeedbacks(prevFeedbacks =>
+          prevFeedbacks.map(fb =>
+            fb.id === selectedGroup ? { ...newFeedbackItem, id: selectedGroup } : fb
+          )
+        );
+      } else {
+        // Add new feedback
+        setFeedbacks(prevFeedbacks => [...prevFeedbacks, newFeedbackItem]);
+      }
+
       setNewFeedback({
-        studentName: '',
         groupName: '',
         project: '',
         feedback: '',
@@ -91,6 +104,7 @@ export default function Feedback() {
         recommendations: ''
       });
       setShowFeedbackModal(false);
+      setSelectedGroup(null);
     }
   };
 
@@ -126,13 +140,10 @@ export default function Feedback() {
           </button>
 
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-lg">
-            Student <span className="text-teal-400">Feedback</span>
+            Group <span className="text-teal-400">Feedback</span>
           </h1>
 
-          <div className="flex gap-2">
-            <Link to="/guide/students" className="bg-white/10 text-white py-2 px-4 rounded-lg border border-white/30 hover:bg-white/20 transition">Students</Link>
-            <Link to="/guide/profile" className="bg-white/10 text-white py-2 px-4 rounded-lg border border-white/30 hover:bg-white/20 transition">Profile</Link>
-          </div>
+          <div className="w-24"></div> {/* Spacer for balance */}
         </div>
       </div>
 
@@ -142,7 +153,7 @@ export default function Feedback() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-white">Feedback Management</h2>
-            <p className="text-white/70">Provide feedback and track student responses</p>
+            <p className="text-white/70">Provide feedback and track group responses</p>
           </div>
           <button
             onClick={() => setShowFeedbackModal(true)}
@@ -160,7 +171,7 @@ export default function Feedback() {
               <Search size={18} className="text-white/80 mr-2" />
               <input
                 className="w-full bg-transparent text-white py-2 outline-none"
-                placeholder="Search students, groups, or projects..."
+                placeholder="Search groups or projects..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -197,11 +208,11 @@ export default function Feedback() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full flex items-center justify-center">
-                    <User size={24} className="text-white" />
+                    <Users size={24} className="text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">{feedback.studentName}</h3>
-                    <p className="text-white/70 text-sm">{feedback.groupName} • {feedback.project}</p>
+                    <h3 className="text-lg font-semibold text-white">{feedback.groupName}</h3>
+                    <p className="text-white/70 text-sm">{feedback.project}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -213,29 +224,28 @@ export default function Feedback() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="mb-4">
                 <p className="text-white/80 text-sm leading-relaxed">{feedback.feedback}</p>
               </div>
-              
+
               <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                 <span>Given on: {feedback.date}</span>
                 <span>ID: {feedback.id}</span>
               </div>
-              
+
               {feedback.response && (
                 <div className="bg-white/10 p-4 rounded-2xl border border-white/20 mb-4">
-                  <p className="text-white/70 text-sm mb-2">Student Response:</p>
+                  <p className="text-white/70 text-sm mb-2">Group Response:</p>
                   <p className="text-white/80 text-sm">{feedback.response}</p>
                 </div>
               )}
-              
+
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    setSelectedStudent(feedback);
+                    setSelectedGroup(feedback.id);
                     setNewFeedback({
-                      studentName: feedback.studentName,
                       groupName: feedback.groupName,
                       project: feedback.project,
                       feedback: feedback.feedback,
@@ -250,9 +260,15 @@ export default function Feedback() {
                 </button>
                 {!feedback.response && (
                   <button className="bg-orange-500/30 text-orange-300 py-2 px-4 rounded-lg border border-orange-400/30 hover:bg-orange-500/40 transition">
-                    Remind Student
+                    Remind Group
                   </button>
                 )}
+                <button
+                  onClick={() => handleDelete(feedback.id)}
+                  className="bg-red-500/30 text-red-300 py-2 px-4 rounded-lg border border-red-400/30 hover:bg-red-500/40 transition flex items-center"
+                >
+                  <Trash2 size={16} className="mr-1" /> Delete
+                </button>
               </div>
             </div>
           ))}
@@ -262,7 +278,7 @@ export default function Feedback() {
           <div className="text-center py-12">
             <MessageSquare size={64} className="text-white/30 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-white mb-2">No feedback found</h3>
-            <p className="text-white/60">Start providing feedback to help students improve</p>
+            <p className="text-white/60">Start providing feedback to help groups improve</p>
           </div>
         )}
       </div>
@@ -273,14 +289,13 @@ export default function Feedback() {
           <div className="bg-gray-800 rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl font-bold text-white">
-                {selectedStudent ? 'Edit Feedback' : 'Give New Feedback'}
+                {selectedGroup !== null ? 'Edit Feedback' : 'Give New Feedback'}
               </h2>
               <button
                 onClick={() => {
                   setShowFeedbackModal(false);
-                  setSelectedStudent(null);
+                  setSelectedGroup(null);
                   setNewFeedback({
-                    studentName: '',
                     groupName: '',
                     project: '',
                     feedback: '',
@@ -293,76 +308,63 @@ export default function Feedback() {
                 ×
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="block text-lg font-semibold text-white mb-2">Student</label>
+                <label className="block text-lg font-semibold text-white mb-2">Group</label>
                 <select
-                  value={newFeedback.studentName}
+                  value={newFeedback.groupName}
                   onChange={(e) => {
-                    const student = availableStudents.find(s => s.name === e.target.value);
+                    const group = availableGroups.find(g => g.name === e.target.value);
                     setNewFeedback(prev => ({
                       ...prev,
-                      studentName: e.target.value,
-                      groupName: student ? student.group : '',
-                      project: student ? student.project : ''
+                      groupName: e.target.value,
+                      project: group ? group.project : ''
                     }));
                   }}
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
-                  <option value="" className="bg-gray-800 text-white">Select student</option>
-                  {availableStudents.map(student => (
-                    <option key={student.name} value={student.name} className="bg-gray-800 text-white">
-                      {student.name} - {student.group}
+                  <option value="" className="bg-gray-800 text-white">Select group</option>
+                  {availableGroups.map(group => (
+                    <option key={group.name} value={group.name} className="bg-gray-800 text-white">
+                      {group.name}
                     </option>
                   ))}
                 </select>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-lg font-semibold text-white mb-2">Group</label>
-                  <input
-                    type="text"
-                    value={newFeedback.groupName}
-                    onChange={(e) => setNewFeedback(prev => ({ ...prev, groupName: e.target.value }))}
-                    placeholder="Group name"
-                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <label className="block text-lg font-semibold text-white mb-2">Project</label>
-                  <input
-                    type="text"
-                    value={newFeedback.project}
-                    onChange={(e) => setNewFeedback(prev => ({ ...prev, project: e.target.value }))}
-                    placeholder="Project title"
-                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    readOnly
-                  />
-                </div>
+
+              <div>
+                <label className="block text-lg font-semibold text-white mb-2">Project</label>
+                <input
+                  type="text"
+                  value={newFeedback.project}
+                  onChange={(e) => setNewFeedback(prev => ({ ...prev, project: e.target.value }))}
+                  placeholder="Project title"
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  readOnly
+                />
               </div>
-              
+
               <div>
                 <label className="block text-lg font-semibold text-white mb-2">Rating</label>
                 <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((rating) => (
+                  {[1, 2, 3, 4, 5].map((starRating) => (
                     <button
-                      key={rating}
-                      onClick={() => setNewFeedback(prev => ({ ...prev, rating }))}
+                      key={starRating}
+                      type="button"
+                      onClick={() => setNewFeedback(prev => ({ ...prev, rating: starRating }))}
                       className={`p-2 rounded-lg transition ${
-                        newFeedback.rating >= rating
+                        newFeedback.rating >= starRating
                           ? 'bg-yellow-500/30 text-yellow-400'
                           : 'bg-white/10 text-white/50 hover:text-white/70'
                       }`}
                     >
-                      <Star size={20} className={newFeedback.rating >= rating ? 'fill-current' : ''} />
+                      <Star size={20} className={newFeedback.rating >= starRating ? 'fill-current' : ''} />
                     </button>
                   ))}
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-lg font-semibold text-white mb-2">Feedback</label>
                 <textarea
@@ -373,7 +375,7 @@ export default function Feedback() {
                   rows="4"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-lg font-semibold text-white mb-2">Recommendations</label>
                 <textarea
@@ -385,20 +387,20 @@ export default function Feedback() {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-3 mt-6">
               <button
                 onClick={submitFeedback}
                 className="bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition flex-1"
               >
-                {selectedStudent ? 'Update Feedback' : 'Submit Feedback'}
+                {selectedGroup !== null ? 'Update Feedback' : 'Submit Feedback'}
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setShowFeedbackModal(false);
-                  setSelectedStudent(null);
+                  setSelectedGroup(null);
                   setNewFeedback({
-                    studentName: '',
                     groupName: '',
                     project: '',
                     feedback: '',
@@ -417,6 +419,3 @@ export default function Feedback() {
     </div>
   );
 }
-
-
-

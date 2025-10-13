@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Star, FileText, CheckCircle, Clock, AlertCircle, Download, Eye, Edit3 } from 'lucide-react';
@@ -163,10 +164,7 @@ export default function ProjectEvaluation() {
             Project <span className="text-teal-400">Evaluation</span>
           </h1>
 
-          <div className="flex gap-2">
-            <Link to="/guide/students" className="bg-white/10 text-white py-2 px-4 rounded-lg border border-white/30 hover:bg-white/20 transition">Students</Link>
-            <Link to="/guide/profile" className="bg-white/10 text-white py-2 px-4 rounded-lg border border-white/30 hover:bg-white/20 transition">Profile</Link>
-          </div>
+          <div className="w-24"></div> {/* Spacer for balance */}
         </div>
       </div>
 
@@ -365,7 +363,6 @@ export default function ProjectEvaluation() {
           </div>
         </div>
       </div>
-
 
     </div>
   );
