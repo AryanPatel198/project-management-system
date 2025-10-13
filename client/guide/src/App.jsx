@@ -6,17 +6,17 @@ import WelcomePage from "./pages/WelcomePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./index.css";
 
-// -------------------- ADMIN PAGES --------------------
-import Login from "./pages/admin/Login";
-import Register from "./pages/admin/Register";
-import AdminHome from "./pages/admin/Home";
-import GuideManagement from "./pages/admin/GuideManagement";
-import GroupManagement from "./pages/admin/GroupManagement";
-import Settings from "./pages/admin/Settings";
-import EvaluationParameters from "./pages/admin/EvaluationParameters";
-import ProjectManagement from "./pages/admin/ProjectManagement";
-import ManageDivisions from "./pages/admin/ManageDivisions";
-import ExamScheduleManagement from "./pages/admin/ExamScheduleManagement";
+// // -------------------- ADMIN PAGES --------------------
+// import Login from "./pages/admin/Login";
+// import Register from "./pages/admin/Register";
+// import AdminHome from "./pages/admin/Home";
+// import GuideManagement from "./pages/admin/GuideManagement";
+// import GroupManagement from "./pages/admin/GroupManagement";
+// import Settings from "./pages/admin/Settings";
+// import EvaluationParameters from "./pages/admin/EvaluationParameters";
+// import ProjectManagement from "./pages/admin/ProjectManagement";
+// import ManageDivisions from "./pages/admin/ManageDivisions";
+// import ExamScheduleManagement from "./pages/admin/ExamScheduleManagement";
 
 // -------------------- GUIDE PAGES --------------------
 import GuideLogin from "./pages/guide/GuideLogin";
@@ -29,21 +29,21 @@ import Feedback from "./pages/guide/Feedback";
 
 import ProjectEvaluation from "./pages/guide/ProjectEvaluation";
 
-// -------------------- STUDENT PAGES --------------------
-import StudentLogin from "./pages/student/Login";
-import StudentRegister from "./pages/student/Register";
-import StudentHome from "./pages/student/Home";
-import StudentDashboard from "./pages/student/StudentDashboard";
-import StudentGroupManagement from "./pages/student/GroupManagement";
-import StudentSettings from "./pages/student/Settings";
-import StudentProjectSubmission from "./pages/student/ProjectSubmission";
-import StudentFeedback from "./pages/student/Feedback";
-import StudentAnnouncements from "./pages/student/Announcements";
-import StudentExamSchedules from "./pages/student/ExamSchedules";
-import StudentGuideDetails from "./pages/student/GuideDetails";
-import StudentProfile from "./pages/student/StudentProfile";
-import StudentGroupChat from "./pages/student/GroupChat";
-import StudentProjectManagement from "./pages/student/ProjectManagement";
+// // -------------------- STUDENT PAGES --------------------
+// import StudentLogin from "./pages/student/Login";
+// import StudentRegister from "./pages/student/Register";
+// import StudentHome from "./pages/student/Home";
+// import StudentDashboard from "./pages/student/StudentDashboard";
+// import StudentGroupManagement from "./pages/student/GroupManagement";
+// import StudentSettings from "./pages/student/Settings";
+// import StudentProjectSubmission from "./pages/student/ProjectSubmission";
+// import StudentFeedback from "./pages/student/Feedback";
+// import StudentAnnouncements from "./pages/student/Announcements";
+// import StudentExamSchedules from "./pages/student/ExamSchedules";
+// import StudentGuideDetails from "./pages/student/GuideDetails";
+// import StudentProfile from "./pages/student/StudentProfile";
+// import StudentGroupChat from "./pages/student/GroupChat";
+// import StudentProjectManagement from "./pages/student/ProjectManagement";
 
 
 
@@ -70,10 +70,10 @@ function App() {
     <Router>
       <Routes>
         {/* -------------------- WELCOME -------------------- */}
-        <Route path="/" element={<WelcomePage />} />
+        {/* <Route path="/" element={<WelcomePage />} /> */}
 
         {/* -------------------- ADMIN ROUTES -------------------- */}
-        <Route path="/admin/login" element={<Login />} />
+        {/* <Route path="/admin/login" element={<Login />} />
         <Route path="/admin/register" element={<Register />} />
         <Route
           path="/admin/home"
@@ -138,12 +138,13 @@ function App() {
               <ExamScheduleManagement />
             </ProtectedRoute>
           }
-        />
+        /> */}
         {/* Default redirect for /admin → home */}
-        <Route path="/admin" element={<Navigate to="/admin/home" replace />} />
+        {/* <Route path="/admin" element={<Navigate to="/admin/home" replace />} /> */}
 
         {/* -------------------- GUIDE ROUTES -------------------- */}
-        <Route path="/guide/login" element={<GuideLogin />} />
+        {/* <Route path="/guide/login" element={<GuideLogin />} /> */}
+        <Route path="/" element={<GuideLogin />} />
         <Route path="/guide/register" element={<GuideRegister />} />
         <Route
           path="/guide/dashboard"
@@ -199,7 +200,7 @@ function App() {
         <Route path="/guide" element={<Navigate to="/guide/dashboard" replace />} />
 
         {/* -------------------- STUDENT ROUTES -------------------- */}
-        <Route path="/student/login" element={<StudentLogin />} />
+        {/* <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/student/register" element={<StudentRegister />} />
         <Route
           path="/student/home"
@@ -296,12 +297,12 @@ function App() {
               <StudentSettings />
             </ProtectedRoute>
           }
-        />
+        /> */}
         {/* Default redirect for /student → dashboard */}
-        <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
+        {/* <Route path="/student" element={<Navigate to="/student/dashboard" replace />} /> */}
 
         {/* -------------------- GENERIC -------------------- */}
-        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+        {/* <Route path="/login" element={<Navigate to="/admin/login" replace />} /> */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>

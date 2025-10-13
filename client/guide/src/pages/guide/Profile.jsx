@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, User, Key, Mail, Camera, LogOut, Upload, Phone } from 'lucide-react';
+import { ChevronLeft, User, Key, Mail, Camera, LogOut, Upload, Phone, Loader2, AlertCircle } from 'lucide-react';
+import { guidePanelAPI, authAPI } from '../../services/api';
 import { currentGuide } from '../../data/mockData';
 
 export default function Profile() {
@@ -24,30 +25,90 @@ export default function Profile() {
 
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [useMockData, setUseMockData] = useState(false);
 
-  // Initialize from mock/current user
-  useEffect(() => {
-    const user = currentGuide;
-    setProfile(p => ({
-      ...p,
-      name: user.name || '',
-      email: user.email || '',
-      department: user.department || '',
-      expertise: user.expertise || '',
-      phone: user.phone || '',
-    }));
-  }, []);
-
-  const handleProfileSave = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setMessage('Profile updated (demo)');
-      setTimeout(() => setMessage(''), 2000);
-    }, 600);
+  // Get current guide ID from localStorage or use mock data
+  const getCurrentGuideId = () => {
+    const user = authAPI.getCurrentUser();
+    return user?.id || 'guide1'; // fallback to mock guide ID
   };
 
-  const handlePasswordSubmit = () => {
+  // Fetch profile data from API
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setInitialLoading(true);
+        setError(null);
+        
+        const guideId = getCurrentGuideId();
+        
+        // Try to fetch from API first
+        const profileData = await guidePanelAPI.getGuideProfile(guideId);
+        setProfile(p => ({
+          ...p,
+          name: profileData.name || '',
+          email: profileData.email || '',
+          department: profileData.department || '',
+          expertise: profileData.expertise || '',
+          phone: profileData.phone || '',
+        }));
+        setUseMockData(false);
+        
+      } catch (apiError) {
+        console.warn('API not available, falling back to mock data:', apiError);
+        
+        // Fallback to mock data
+        const user = currentGuide;
+        setProfile(p => ({
+          ...p,
+          name: user.name || '',
+          email: user.email || '',
+          department: user.department || '',
+          expertise: user.expertise || '',
+          phone: user.phone || '',
+        }));
+        setUseMockData(true);
+        setError('Using mock data - API not available');
+        
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleProfileSave = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const guideId = getCurrentGuideId();
+      
+      if (useMockData) {
+        // Mock data fallback
+        setTimeout(() => {
+          setLoading(false);
+          setMessage('Profile updated (demo)');
+          setTimeout(() => setMessage(''), 2000);
+        }, 600);
+      } else {
+        // API call
+        await guidePanelAPI.updateGuideProfile(guideId, profile);
+        setLoading(false);
+        setMessage('Profile updated successfully');
+        setTimeout(() => setMessage(''), 2000);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setLoading(false);
+      setError('Failed to update profile');
+    }
+  };
+
+  const handlePasswordSubmit = async () => {
     if (passwords.newPassword !== passwords.confirmPassword) {
       setMessage('Passwords do not match!');
       setTimeout(() => setMessage(''), 2000);
@@ -58,13 +119,32 @@ export default function Profile() {
       setTimeout(() => setMessage(''), 2000);
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (useMockData) {
+        // Mock data fallback
+        setTimeout(() => {
+          setLoading(false);
+          setMessage('Password changed (demo)');
+          setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+          setTimeout(() => setMessage(''), 2000);
+        }, 600);
+      } else {
+        // API call
+        await authAPI.changeGuidePassword(passwords);
+        setLoading(false);
+        setMessage('Password changed successfully');
+        setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setMessage(''), 2000);
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
       setLoading(false);
-      setMessage('Password changed (demo)');
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setMessage(''), 2000);
-    }, 600);
+      setError('Failed to change password');
+    }
   };
 
   // @ts-ignore
@@ -127,6 +207,28 @@ export default function Profile() {
         </div>
       )}
 
+      {/* Error State */}
+      {error && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-red-500/20 backdrop-blur-md text-red-400 font-semibold px-6 py-3 rounded-lg border border-red-400/30 z-50">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {initialLoading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 size={48} className="text-teal-400 animate-spin" />
+            <p className="text-white text-lg">Loading profile...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Only show when not loading */}
+      {!initialLoading && (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30">
@@ -298,6 +400,7 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
