@@ -48,11 +48,11 @@ export default function Profile() {
         const profileData = await guidePanelAPI.getGuideProfile(guideId);
         setProfile(p => ({
           ...p,
-          name: profileData.name || '',
-          email: profileData.email || '',
-          department: profileData.department || '',
-          expertise: profileData.expertise || '',
-          phone: profileData.phone || '',
+          name: (profileData?.data?.name) || '',
+          email: (profileData?.data?.email) || '',
+          department: (profileData?.data?.department) || '',
+          expertise: (profileData?.data?.expertise) || '',
+          phone: (profileData?.data?.phone) || '',
         }));
         setUseMockData(false);
         

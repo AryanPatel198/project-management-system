@@ -176,7 +176,9 @@ export const getAuthenticatedGuide = async (req, res) => {
 
     const guide = await Guide.findById(req.guide._id).select("-password");
     if (!guide) {
-      return res.status(404).json({ success: false, message: "Guide not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Guide not found" });
     }
 
     res.status(200).json({
@@ -217,7 +219,9 @@ export const updateAuthenticatedGuide = async (req, res) => {
     ).select("-password");
 
     if (!updatedGuide) {
-      return res.status(404).json({ success: false, message: "Guide not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Guide not found" });
     }
 
     res.status(200).json({
@@ -256,27 +260,37 @@ export const changeGuidePassword = async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
     }
 
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({ success: false, message: "Passwords do not match" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
     }
 
     const guide = await Guide.findById(req.guide._id);
     if (!guide) {
-      return res.status(404).json({ success: false, message: "Guide not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Guide not found" });
     }
 
     const isMatch = await guide.matchPassword(currentPassword);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Current password is incorrect" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Current password is incorrect" });
     }
 
     guide.password = newPassword;
     await guide.save();
 
-    res.status(200).json({ data: { message: "Password changed successfully" } });
+    res
+      .status(200)
+      .json({ data: { message: "Password changed successfully" } });
   } catch (error) {
     console.error("Error changing guide password:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
@@ -400,31 +414,28 @@ export const getGuideDashboard = async (req, res) => {
     }
 
     // Fetch groups assigned to this guide
-    const groups = await Group.find({ guide: guideId }).populate(
-      "members",
-      "name email role"
-    );
+    const groups = await Group.find({ guide: guideId })
+      .populate("membersSnapshot.studentRef", "name email") // optional: populate student info
+      .lean();
 
     // Construct stats
     const stats = {
       totalGroups: groups.length,
-      activeProjects: groups.filter((g) => g.status === "Active").length,
+      activeProjects: groups.filter((g) => g.status === "In Progress").length,
       completedProjects: groups.filter((g) => g.status === "Completed").length,
       pendingReviews: groups.filter((g) => g.status === "Pending Review")
         .length,
     };
 
-    // Format groups as frontend expects
+    // Format groups for frontend
     const formattedGroups = groups.map((g) => ({
       id: g._id,
-      groupName: g.groupName,
+      groupName: g.name, // match frontend expectation
       projectTitle: g.projectTitle,
       status: g.status,
       progress: g.progress || 0,
-      members: g.members.map((m) => m.name),
-      lastUpdate: g.lastUpdate
-        ? g.lastUpdate.toISOString().split("T")[0]
-        : null,
+      members: g.membersSnapshot.map((m) => m.studentRef?.name || m.name),
+      lastUpdate: g.updatedAt ? g.updatedAt.toISOString().split("T")[0] : null,
       nextSeminar: g.nextSeminar
         ? g.nextSeminar.toISOString().split("T")[0]
         : null,
@@ -493,7 +504,9 @@ export const getGuideGroups = async (req, res) => {
     // Ensure guide exists
     const guide = await Guide.findById(guideId);
     if (!guide) {
-      return res.status(404).json({ success: false, message: "Guide not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Guide not found" });
     }
 
     const groups = await Group.find({ guide: guideId })
@@ -505,12 +518,16 @@ export const getGuideGroups = async (req, res) => {
       groupName: g.name,
       projectTitle: g.projectTitle || "",
       description: g.projectDescription || "",
-      maxMembers:  g.membersSnapshot?.length || 0,
+      maxMembers: g.membersSnapshot?.length || 0,
       currentMembers: (g.students || []).length,
       status: g.status,
       startDate: g.createdAt?.toISOString?.().split("T")[0] || null,
       endDate: g.updatedAt?.toISOString?.().split("T")[0] || null,
-      members: (g.students || []).map((s) => ({ id: s._id, name: s.name, email: s.email })),
+      members: (g.students || []).map((s) => ({
+        id: s._id,
+        name: s.name,
+        email: s.email,
+      })),
     }));
 
     res.status(200).json({ data: formatted });
@@ -528,11 +545,14 @@ export const getGuideGroups = async (req, res) => {
 export const createGroupForGuide = async (req, res) => {
   try {
     const guideId = req.params.id;
-    const { groupName, projectTitle, description, maxMembers, year } = req.body || {};
+    const { groupName, projectTitle, description, maxMembers, year } =
+      req.body || {};
 
     const guide = await Guide.findById(guideId);
     if (!guide) {
-      return res.status(404).json({ success: false, message: "Guide not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Guide not found" });
     }
 
     const created = await Group.create({
@@ -560,7 +580,9 @@ export const createGroupForGuide = async (req, res) => {
   } catch (error) {
     console.error("Error creating group:", error.message);
     if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: "Group name must be unique" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Group name must be unique" });
     }
     res.status(500).json({ success: false, message: "Server error" });
   }
@@ -579,7 +601,9 @@ export const getGroupByIdForGuide = async (req, res) => {
       .populate("students", "name email enrollmentNumber")
       .lean();
     if (!group) {
-      return res.status(404).json({ success: false, message: "Group not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
 
     const data = {
@@ -592,7 +616,11 @@ export const getGroupByIdForGuide = async (req, res) => {
       status: group.status,
       startDate: group.createdAt?.toISOString?.().split("T")[0] || null,
       endDate: group.updatedAt?.toISOString?.().split("T")[0] || null,
-      members: (group.students || []).map((s) => ({ id: s._id, name: s.name, email: s.email })),
+      members: (group.students || []).map((s) => ({
+        id: s._id,
+        name: s.name,
+        email: s.email,
+      })),
     };
 
     res.status(200).json({ data });
@@ -625,7 +653,9 @@ export const updateGroupForGuide = async (req, res) => {
     );
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: "Group not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
 
     const data = {
@@ -659,9 +689,14 @@ export const updateGroupForGuide = async (req, res) => {
 export const deleteGroupForGuide = async (req, res) => {
   try {
     const { id: guideId, groupId } = req.params;
-    const deleted = await Group.findOneAndDelete({ _id: groupId, guide: guideId });
+    const deleted = await Group.findOneAndDelete({
+      _id: groupId,
+      guide: guideId,
+    });
     if (!deleted) {
-      return res.status(404).json({ success: false, message: "Group not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
     }
     res.status(200).json({ data: { message: "Group deleted successfully" } });
   } catch (error) {

@@ -29,7 +29,7 @@ export default function GuideAPIExample() {
         
         // Try to fetch from API first
         const groupsData = await guidePanelAPI.getGuideGroups(guideId);
-        setGroups(groupsData || []);
+        setGroups((groupsData && groupsData.data) || []);
         setUseMockData(false);
         
       } catch (apiError) {
@@ -67,7 +67,7 @@ export default function GuideAPIExample() {
       } else {
         // API call
         const newGroup = await guidePanelAPI.createGroup(guideId, groupData);
-        setGroups([...groups, newGroup]);
+        setGroups([...groups, (newGroup && newGroup.data) || newGroup]);
       }
     } catch (error) {
       console.error('Error creating group:', error);

@@ -87,7 +87,7 @@ export default function GroupManagement() {
         } else {
           // API call
           const newGroup = await guidePanelAPI.createGroup(guideId, formData);
-          setGroups([...groups, newGroup]);
+          setGroups([...groups, newGroup?.data || newGroup]);
         }
 
         setShowAddModal(false);
@@ -124,7 +124,7 @@ export default function GroupManagement() {
           );
           setGroups(
             groups.map((group) =>
-              group.id === selectedGroup.id ? updatedGroup : group
+              group.id === selectedGroup.id ? (updatedGroup?.data || updatedGroup) : group
             )
           );
         }
