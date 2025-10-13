@@ -5,6 +5,7 @@ import config from "./config/env.js";
 import adminRoutes from "./routes/admin/adminRoutes.js";
 import guideRoutes from "./routes/guideRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
+import guidePanelRoutes from "./routes/guidePanelRoutes.js";
 
 connectDB();
 const app = express();
@@ -27,6 +28,7 @@ app.use(
 app.use("/api/admin", adminRoutes);
 app.use("/api", guideRoutes);
 app.use("/api/student", studentRoutes);
+app.use("/api/guide-panel", guidePanelRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

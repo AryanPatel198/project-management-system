@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Users, User, BookOpen, Code, Hash, Edit, X, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { guidePanelAPI } from '../../services/guidePanelAPI';
@@ -39,22 +39,75 @@ const guideGroups = [
 function GroupManagement() {
   const navigate = useNavigate();
 
-  const [groups, setGroups] = useState(guideGroups);
+  const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedGroup, setEditedGroup] = useState(null);
   const [currentMembers, setCurrentMembers] = useState([]);
   const [newMemberSearch, setNewMemberSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [availableStudents, setAvailableStudents] = useState([]);
+  const [selectedNewMemberId, setSelectedNewMemberId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Initial load of groups
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        setLoading(true);
+        const res = await guidePanelAPI.getGroups();
+        // Map to local card structure
+        console.log(res);
+        const mapped = (res || []).map(g => ({
+          id: g.id,
+          name: g.groupName || g.name || 'Group',
+          projectTitle: g.projectTitle || '',
+          year: g.year || new Date().getFullYear(),
+          members: (g.members || []).map(m => ({
+            _id: m.id,
+            name: m.name,
+            enrollmentNumber: m.enrollmentNumber,
+          })),
+        }));
+        setGroups(mapped);
+      } catch (e) {
+        setError('Failed to load groups');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadGroups();
+  }, []);
 
   const handleBack = () => {
     navigate('/guide/dashboard', { replace: true });
   };
 
-  const handleViewDetails = (group) => {
-    setSelectedGroup(group);
+  const handleViewDetails = async (group) => {
+    try {
+      setLoading(true);
+      // Always fetch latest details from API
+      const details = await guidePanelAPI.getGroupDetails(group.id);
+      const mapped = {
+        id: details.id,
+        name: details.groupName || group.name,
+        projectTitle: details.projectTitle || group.projectTitle,
+        projectDescription: details.description || '',
+        projectTechnology: details.technology || '',
+        year: details.year || group.year,
+        members: (details.members || []).map(m => ({
+          _id: m.id,
+          name: m.name,
+          enrollmentNumber: m.enrollmentNumber,
+        })),
+      };
+      setSelectedGroup(mapped);
+    } catch (e) {
+      setError('Failed to load group details');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBackToList = () => {
@@ -84,7 +137,9 @@ function GroupManagement() {
     if (!newMemberSearch.trim()) return;
     try {
       const response = await guidePanelAPI.searchStudents(newMemberSearch);
-      setSearchResults(response.data);
+      // console.log(response);
+      // console.log(response.data);
+      setSearchResults(response);
     } catch (err) {
       setError('Failed to search students');
     }
@@ -102,6 +157,7 @@ function GroupManagement() {
     setCurrentMembers([...currentMembers, student]);
     setNewMemberSearch('');
     setSearchResults([]);
+    setSelectedNewMemberId('');
   };
 
   const handleRemoveMember = (studentId) => {
@@ -122,7 +178,6 @@ function GroupManagement() {
       const updateData = {
         projectTitle: editedGroup.projectTitle,
         projectDescription: editedGroup.projectDescription,
-        course: editedGroup.members[0]?.className || 'BCA 6',
         year: editedGroup.year,
         technology: editedGroup.projectTechnology,
         members: currentMembers.map(m => m._id)
@@ -139,6 +194,25 @@ function GroupManagement() {
       setLoading(false);
     }
   };
+
+  // Load available students when opening edit
+  useEffect(() => {
+    const fetchAvailable = async () => {
+      if (!isEditing || !selectedGroup) return;
+      try {
+        const res = await guidePanelAPI.getAvailableStudentsForGroup(selectedGroup.id);
+        setAvailableStudents(res.data || []);
+      } catch (e) {
+        // non-fatal
+      }
+    };
+    fetchAvailable();
+  }, [isEditing, selectedGroup]);
+
+  const dropdownOptions = useMemo(() => {
+    const currentIds = new Set(currentMembers.map(m => m._id));
+    return (availableStudents || []).filter(s => !currentIds.has(s._id));
+  }, [availableStudents, currentMembers]);
 
   // Render details view
   const renderDetailsView = () => {
@@ -387,6 +461,32 @@ function GroupManagement() {
                   {/* Add New Member */}
                   <div className="space-y-3">
                     <label className="block text-white/80">Add New Member</label>
+                    <div className="flex gap-2 items-center">
+                      <select
+                        value={selectedNewMemberId}
+                        onChange={(e) => setSelectedNewMemberId(e.target.value)}
+                        className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                      >
+                        <option value="" className="text-black">Select student by enrollment</option>
+                        {dropdownOptions.map((s) => (
+                          <option key={s._id} value={s._id} className="text-black">
+                            {s.enrollmentNumber} - {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          const s = dropdownOptions.find(d => d._id === selectedNewMemberId);
+                          if (s) handleAddMember(s);
+                        }}
+                        disabled={!selectedNewMemberId}
+                        className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition"
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="text-white/60 text-sm">Or search by enrollment</div>
                     <div className="flex gap-2">
                       <input
                         type="text"

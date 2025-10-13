@@ -56,6 +56,16 @@ export const guidePanelAPI = {
     return response.data;
   },
 
+  /**
+   * @param {string} groupId
+   */
+  getAvailableStudentsForGroup: async (groupId) => {
+    const response = await apiRequest(`/guide-panel/groups/${groupId}/available-students`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
   // Student Management
   getStudents: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
