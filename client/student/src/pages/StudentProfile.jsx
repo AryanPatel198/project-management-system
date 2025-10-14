@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User, Mail, Phone,
+  User, Mail, Phone, Users, FileText,
   ChevronLeft, Edit
 } from 'lucide-react';
 import { studentProtectedAPI } from '../services/api';
@@ -11,26 +11,33 @@ function StudentProfile() {
   const [studentData, setStudentData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
+  const [groupData, setGroupData] = useState(null);
 
   // Get auth token
   const getToken = () => localStorage.getItem('studentToken');
 
-  // Fetch student data on component mount
+  // Fetch student data and group data on component mount
   useEffect(() => {
-    const fetchStudentData = async () => {
+    const fetchData = async () => {
       try {
-        const data = await studentProtectedAPI.getProfile();
-        setStudentData(data);
-        setEditData(data);
+        const profileData = await studentProtectedAPI.getProfile();
+        setStudentData(profileData);
+        setEditData(profileData);
+
+        // Fetch group data
+        const groupResponse = await studentProtectedAPI.checkGroup();
+        if (groupResponse.inGroup) {
+          setGroupData(groupResponse.group);
+        }
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error fetching data:', error);
         if (error.message.includes('401') || error.message.includes('403')) {
           navigate('/login');
         }
       }
     };
 
-    fetchStudentData();
+    fetchData();
   }, [navigate]);
 
   const handleEditToggle = () => {
@@ -152,6 +159,45 @@ function StudentProfile() {
               ))}
             </div>
           </div> */}
+
+          {/* Group Information */}
+          <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+            <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+              <Users size={24} className="text-blue-400 mr-3" />
+              Group Information
+            </h3>
+            {groupData ? (
+              <div className="space-y-4">
+                <DetailItem
+                  icon={Users}
+                  label="Group Name"
+                  value={groupData.name || 'N/A'}
+                />
+                <DetailItem
+                  icon={FileText}
+                  label="Project Title"
+                  value={groupData.projectTitle || 'Not assigned'}
+                />
+                <div className="mt-4">
+                  <h4 className="text-white font-semibold mb-3">Group Members:</h4>
+                  <div className="space-y-2">
+                    {groupData.students && groupData.students.length > 0 ? (
+                      groupData.students.map((student, index) => (
+                        <div key={index} className="flex items-center text-white/80 bg-white/5 p-2 rounded">
+                          <User size={16} className="text-blue-400 mr-2" />
+                          <span>{student.name} ({student.enrollmentNumber})</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-white/70">No members found</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-white/70">You are not currently in a group.</p>
+            )}
+          </div>
 
           {/* Achievements
           <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">

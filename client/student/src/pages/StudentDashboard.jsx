@@ -224,12 +224,6 @@ function StudentDashboard() {
                 onClick: goToProjectSubmission
               },
               {
-                icon: Users,
-                title: 'Group Management',
-                description: 'Manage your project team members',
-                onClick: goToGroupManagement
-              },
-              {
                 icon: MessageSquare,
                 title: 'Group Chat',
                 description: 'Chat with your group members',

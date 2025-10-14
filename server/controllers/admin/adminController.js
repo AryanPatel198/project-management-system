@@ -681,13 +681,19 @@ export const getAvailableStudentsForGroup = async (req, res) => {
         .json({ success: false, message: "Missing division filters" });
     }
 
-    // Find assigned student IDs in this group
-    const group = await Group.findById(id).select("students");
-    const assignedIds = group ? group.students : [];
+    // Find all groups in the same division
+    const groupsInDivision = await Group.find({
+      "division.course": course,
+      "division.semester": Number(semester),
+      "division.year": Number(year),
+    }).select("students");
+
+    // Get all student IDs already in groups in this division
+    const groupedStudentIds = groupsInDivision.flatMap(group => group.students.map(id => id.toString()));
 
     // Find unassigned students in the same division
     const availableStudents = await Student.find({
-      _id: { $nin: assignedIds },
+      _id: { $nin: groupedStudentIds },
       "division.course": course,
       "division.semester": Number(semester),
       "division.year": Number(year),
