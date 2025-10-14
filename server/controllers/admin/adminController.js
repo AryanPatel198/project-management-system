@@ -2224,4 +2224,213 @@ export const updateGroupDetails = async (req, res) => {
   }
 };
 
+/**
+ * @desc   Get all students with optional filters
+ * @route  GET /api/admin/students
+ * @access Private (Admin)
+ */
+export const getAllStudents = async (req, res) => {
+  try {
+    const { search, division, isRegistered } = req.query;
+
+    // Build filter dynamically
+    const filter = {};
+    if (division) filter.division = division;
+    if (isRegistered !== undefined) filter.isRegistered = isRegistered === 'true';
+
+    let students = await Student.find(filter)
+      .populate("division", "course semester year")
+      .populate("group", "name projectTitle")
+      .select("name enrollmentNumber email phone division group isRegistered")
+      .exec();
+
+    // Client-side search if provided (since search is simple)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      students = students.filter(student =>
+        student.name?.toLowerCase().includes(searchLower) ||
+        student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      count: students.length,
+      data: students,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching students:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching students",
+    });
+  }
+};
+
+/**
+ * @desc   Add a new student
+ * @route  POST /api/admin/add-student
+ * @access Private (Admin)
+ */
+export const addStudent = async (req, res) => {
+  try {
+    const { enrollmentNumber, name, email, phone, divisionId } = req.body;
+
+    // Validate required fields
+    if (!enrollmentNumber || !name || !email || !divisionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Enrollment number, name, email, and division are required",
+      });
+    }
+
+    // Check if student already exists
+    const existingStudent = await Student.findOne({ enrollmentNumber });
+    if (existingStudent) {
+      return res.status(409).json({
+        success: false,
+        message: "Student with this enrollment number already exists",
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = await Student.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: "Student with this email already exists",
+      });
+    }
+
+    // Validate division exists
+    const division = await Division.findById(divisionId);
+    if (!division) {
+      return res.status(404).json({
+        success: false,
+        message: "Division not found",
+      });
+    }
+
+    // Create new student
+    const newStudent = await Student.create({
+      enrollmentNumber,
+      name,
+      email,
+      phone: phone || null,
+      division: divisionId,
+      isRegistered: false,
+    });
+
+    // Populate for response
+    await newStudent.populate("division", "course semester year");
+
+    res.status(201).json({
+      success: true,
+      message: "Student added successfully",
+      data: newStudent,
+    });
+  } catch (err) {
+    console.error("❌ Error adding student:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while adding student",
+    });
+  }
+};
+
+/**
+ * @desc   Get a single student by ID for admin management (view student details)
+ * @route  GET /api/admin/students/:id
+ * @access Private (Admin)
+ */
+export const getStudentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await Student.findById(id)
+      .populate("division", "course semester year")
+      .populate("group", "name projectTitle")
+      .select("name enrollmentNumber email phone division group isRegistered")
+      .exec();
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: student,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching student:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching student",
+    });
+  }
+};
+
+/**
+ * @desc   Update a student by ID for admin management (edit student)
+ * @route  PUT /api/admin/students/:id
+ * @access Private (Admin)
+ */
+export const updateStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, isRegistered } = req.body;
+
+    // Find student
+    const student = await Student.findById(id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    // Check for duplicate email if email is being updated
+    if (email && email !== student.email) {
+      const existingStudent = await Student.findOne({
+        email,
+        _id: { $ne: id },
+      });
+      if (existingStudent) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use by another student",
+        });
+      }
+    }
+
+    // Update fields
+    if (name) student.name = name;
+    if (email !== undefined) student.email = email;
+    if (phone !== undefined) student.phone = phone;
+    if (isRegistered !== undefined) student.isRegistered = isRegistered;
+
+    await student.save();
+
+    // Populate for response
+    await student.populate("division", "course semester year");
+    await student.populate("group", "name projectTitle");
+
+    res.status(200).json({
+      success: true,
+      message: "Student updated successfully",
+      data: student,
+    });
+  } catch (err) {
+    console.error("❌ Error updating student:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating student",
+    });
+  }
+};
+
 

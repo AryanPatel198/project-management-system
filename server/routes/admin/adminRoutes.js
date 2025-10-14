@@ -51,6 +51,9 @@ import {
   getProjectEvaluations,
   getProjectEvaluationById,
   updateProjectEvaluation,
+  getAllStudents,
+  getStudentById,
+  updateStudent,
   // updateGroupDetails,
 } from "../../controllers/admin/adminController.js";
 import { protectAdmin } from "../../middlewares/authMiddleware.js";
@@ -230,5 +233,18 @@ router.put("/update-group/:groupId", updateGroup);
 
 // DELETE /api/admin/groups/:id
 router.delete("/groups/:id", deleteGroup);
+
+// Student management routes
+// GET /api/admin/students
+router.get("/students", getAllStudents);
+
+// GET /api/admin/students/:id
+router.get("/students/:id", getStudentById);
+
+// PUT /api/admin/students/:id
+router.put("/students/:id", updateStudent);
+
+// DELETE /api/admin/students/:id
+router.delete("/students/:id", removeStudentById);
 
 export default router;

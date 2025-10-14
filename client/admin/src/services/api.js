@@ -47,8 +47,12 @@ export const groupAPI = {
 
 // ✅ Students API
 export const studentAPI = {
-  getAll: () => api.get("/students"),
+  getAll: (params) => api.get("/students", { params }),
+  getById: (id) => api.get(`/students/${id}`),
   getAvailable: (params) => api.get("/get-available-students", { params }),
+  add: (payload) => api.post("/add-student", payload),
+  update: (id, payload) => api.put(`/students/${id}`, payload),
+  delete: (id) => api.delete(`/students/${id}`),
 };
 
 // ✅ Divisions API
