@@ -1,4 +1,4 @@
-// backend/src/controllers/adminController.js
+// server/controllers/admin/adminController.js
 // import sendEmail from "../../services/emailService.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -192,7 +192,6 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// controllers/admin/adminController.js
 export const getAllGuides = async (req, res) => {
   try {
     const guides = await Guide.find().select("-password -otp -otpExpiry");
@@ -276,8 +275,6 @@ export const createGuide = async (req, res) => {
     });
   }
 };
-
-// controllers/admin/adminController.js
 
 export const updateGuideStatus = async (req, res) => {
   try {
@@ -1375,7 +1372,7 @@ export const removeStudentById = async (req, res) => {
       });
     }
 
-    // 2️⃣ Check if student existsch
+    // 2️⃣ Check if student exists
     const student = await Student.findById(id);
     if (!student) {
       return res.status(404).json({
@@ -2165,7 +2162,7 @@ export const updateGroupDetails = async (req, res) => {
           enrollmentId = member;
         } else if (member.enrollment || member.enrollmentNumber) {
           const enrollmentNum = member.enrollment || member.enrollmentNumber;
-          const enrollment = await Enrollment.findOne({
+          const enrollment = await Student.findOne({
             enrollmentNumber: enrollmentNum,
           });
           if (!enrollment) {
@@ -2199,7 +2196,7 @@ export const updateGroupDetails = async (req, res) => {
         });
       }
 
-      group.members = resolvedMembers;
+      group.students = resolvedMembers;
     }
 
     // 4️⃣ Update other fields if provided
@@ -2223,7 +2220,7 @@ export const updateGroupDetails = async (req, res) => {
     await group.populate([
       { path: "guide", select: "name email expertise mobile" },
       { path: "division", select: "course semester year" },
-      { path: "members", select: "name enrollmentNumber" },
+      { path: "students", select: "name enrollmentNumber" },
     ]);
 
     // 8️⃣ Send success response
@@ -2258,8 +2255,7 @@ export const getAllStudents = async (req, res) => {
 
     let students = await Student.find(filter)
       .populate("division", "course semester year")
-      .populate("group", "name projectTitle")
-      .select("name enrollmentNumber email phone division group isRegistered isActive")
+      .select("name enrollmentNumber email phone division isRegistered")
       .exec();
 
     // Client-side search if provided (since search is simple)
@@ -2368,8 +2364,7 @@ export const getStudentById = async (req, res) => {
 
     const student = await Student.findById(id)
       .populate("division", "course semester year")
-      .populate("group", "name projectTitle")
-      .select("name enrollmentNumber email phone division group isRegistered")
+      .select("name enrollmentNumber email phone division isRegistered")
       .exec();
 
     if (!student) {
@@ -2435,7 +2430,6 @@ export const updateStudent = async (req, res) => {
 
     // Populate for response
     await student.populate("division", "course semester year");
-    await student.populate("group", "name projectTitle");
 
     res.status(200).json({
       success: true,

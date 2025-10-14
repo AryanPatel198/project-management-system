@@ -133,7 +133,7 @@ export const getAvailableStudents = async (req, res) => {
 
     // Get students already in groups
     const groupsInDivision = await Group.find({ division: student.division._id });
-    const groupedStudentIds = groupsInDivision.flatMap(group => group.students);
+    const groupedStudentIds = groupsInDivision.flatMap(group => group.students.map(id => id.toString()));
 
     // Filter out students already in groups and the current student
     const availableStudents = divisionStudents.filter(s =>
