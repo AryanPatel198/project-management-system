@@ -14,6 +14,7 @@ import {
 import AdminSettings from "./AdminSettings";
 import GuideManagement from "./GuideManagement";
 import GroupManagement from "./GroupManagement";
+import StudentManagement from "./StudentManagement";
 import ManageDivisions from "./ManageDivisions";
 import EvaluationParameters from "./EvaluationParameters";
 import ExamScheduleManagement from "./ExamScheduleManagement";
@@ -121,6 +122,14 @@ function Dashboard() {
       title: "Manage Groups",
       description:
         "Organize and oversee student project groups and memberships.",
+    },
+    {
+      name: "Students",
+      icon: User,
+      path: "students",
+      title: "Manage Students",
+      description:
+        "View, add, edit, and manage student profiles and registrations.",
     },
     {
       name: "Projects",
@@ -272,6 +281,7 @@ function Dashboard() {
           />
           <Route path="guides" element={<GuideManagement />} />
           <Route path="groups" element={<GroupManagement />} />
+          <Route path="students" element={<StudentManagement />} />
           <Route path="projects" element={<ProjectManagement />} />
           <Route path="schedules" element={<ExamScheduleManagement />} />
           <Route path="divisions" element={<ManageDivisions />} />
