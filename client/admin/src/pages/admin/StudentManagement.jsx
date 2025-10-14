@@ -195,7 +195,7 @@ const StudentManagement = () => {
                     <Search size={20} className="absolute left-3 top-1/2 mt-2 transform -translate-y-1/2 text-cyan-500" />
                     <input
                         type="text"
-                        placeholder="E.g., John Doe or 12345"
+                        placeholder="E.g., Kartik Patel, MCA20253001, kartik21@gmail.com"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 transition-all"

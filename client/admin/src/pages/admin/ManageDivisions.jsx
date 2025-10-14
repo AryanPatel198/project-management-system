@@ -575,7 +575,7 @@ function ManageDivisions() {
                       </p>
                       <p className="text-sm text-white/80">
                         {enrollment.isRegistered
-                          ? `Registered: ${enrollment.studentName || "N/A"}`
+                          ? `Registered: ${enrollment.name || "N/A"}`
                           : "Not Registered"}
                       </p>
                     </div>
@@ -1000,19 +1000,27 @@ function ManageDivisions() {
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300 hover:shadow-md"
                   placeholder="e.g., BCA2025001"
                 />
-                {/* Inside the AddEnrollmentModal component or wherever you handle the JSX
+              </div>
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-lg font-semibold text-white mb-2"
+                >
+                  Student Name
+                </label>
                 <input
+                  id="name"
                   type="text"
-                  placeholder="Student Name"
                   value={newEnrollment.name}
                   onChange={(e) =>
-                    setNewEnrollment((prev) => ({
-                      ...prev,
+                    setNewEnrollment({
+                      ...newEnrollment,
                       name: e.target.value,
-                    }))
+                    })
                   }
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300 hover:shadow-md"
-                /> */}
+                  placeholder="e.g., John Doe"
+                />
               </div>
             </div>
             <div className="flex justify-end gap-4 mt-8">

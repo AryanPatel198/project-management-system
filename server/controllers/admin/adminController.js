@@ -1073,7 +1073,7 @@ export const getStudentEnrollments = async (req, res) => {
     // Fetch all students (you can filter here if needed later)
     const students = await Student.find(
       {},
-      "enrollmentNumber name division group status"
+      "enrollmentNumber name division group isRegistered"
     ).populate("division", "course semester year");
 
     res.status(200).json({
@@ -1278,7 +1278,7 @@ export const generateEnrollments = async (req, res) => {
         enrollmentNumber,
         name: `Student ${rollStr}`,
         division: division._id,
-        status: "pending",
+        isRegistered: false,
       });
     }
 
@@ -1324,26 +1324,30 @@ export const getEnrollmentsByDivision = async (req, res) => {
 
     const students = await Student.find({ division: id })
       .populate("division", "course semester year status")
-      .select("enrollmentNumber name email phone status createdAt")
+      .select("enrollmentNumber name email phone isRegistered createdAt")
       .lean(); // convert mongoose docs to plain objects for easy mapping
 
     // 🧠 Format enrollmentNumber here
     const formattedStudents = students.map((student) => ({
-      ...student,
       enrollmentNumber: student.enrollmentNumber.replace(/-/g, ""), // remove all "-"
+      name: student.name,
+      email: student.email,
+      phone: student.phone,
+      status: student.isRegistered,
+      createdAt: student.createdAt,
     }));
 
     // 3️⃣ Return results
     res.status(200).json({
       success: true,
-      count: students.length,
+      count: formattedStudents.length,
       division: {
         id: division._id,
         course: division.course,
         semester: division.semester,
         year: division.year,
       },
-      data: students,
+      data: formattedStudents,
     });
   } catch (err) {
     console.error("❌ Error fetching enrollments by division:", err.message);
@@ -1371,7 +1375,7 @@ export const removeStudentById = async (req, res) => {
       });
     }
 
-    // 2️⃣ Check if student exists
+    // 2️⃣ Check if student existsch
     const student = await Student.findById(id);
     if (!student) {
       return res.status(404).json({

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  User, Mail, Phone, BookOpen, Calendar, GraduationCap, 
-  MapPin, Clock, Award, ChevronLeft, Edit 
+import {
+  User, Mail, Phone,
+  ChevronLeft, Edit
 } from 'lucide-react';
+import { studentProtectedAPI } from '../services/api';
 
 function StudentProfile() {
   const navigate = useNavigate();
@@ -11,45 +12,26 @@ function StudentProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
 
+  // Get auth token
+  const getToken = () => localStorage.getItem('studentToken');
+
   // Fetch student data on component mount
   useEffect(() => {
-    // Simulate fetching student data (in real app, this would be an API call)
     const fetchStudentData = async () => {
-      // Mock student data with comprehensive details
-      const mockStudentData = {
-        name: "Aaryan Patel",
-        enrollmentNumber: "ENR001",
-        department: "Computer Science",
-        semester: "3rd Semester",
-        email: "aaryan.patel@example.com",
-        phone: "+91 9876543210",
-        dateOfBirth: "2002-05-15",
-        address: "123 Main Street, Mumbai, Maharashtra",
-        admissionYear: "2022",
-        expectedGraduation: "2025",
-        courses: [
-          "Data Structures and Algorithms",
-          "Database Management Systems",
-          "Web Development",
-          "Machine Learning",
-          "Software Engineering"
-        ],
-        achievements: [
-          "Academic Excellence Award 2023",
-          "Best Project Award - Hackathon 2023",
-          "Dean's List - Semester 2"
-        ],
-        profileImage: null
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStudentData(mockStudentData);
-      setEditData(mockStudentData);
+      try {
+        const data = await studentProtectedAPI.getProfile();
+        setStudentData(data);
+        setEditData(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        if (error.message.includes('401') || error.message.includes('403')) {
+          navigate('/login');
+        }
+      }
     };
 
     fetchStudentData();
-  }, []);
+  }, [navigate]);
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
@@ -122,7 +104,7 @@ function StudentProfile() {
         </div>
 
         {/* Profile Details Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8">
           {/* Personal Information */}
           <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">
             <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
@@ -130,9 +112,9 @@ function StudentProfile() {
               Personal Information
             </h3>
             <div className="space-y-4">
-              <DetailItem 
-                icon={Mail} 
-                label="Email" 
+              <DetailItem
+                icon={Mail}
+                label="Email"
                 value={isEditing ? (
                   <input
                     type="email"
@@ -142,9 +124,9 @@ function StudentProfile() {
                   />
                 ) : studentData.email}
               />
-              <DetailItem 
-                icon={Phone} 
-                label="Phone" 
+              <DetailItem
+                icon={Phone}
+                label="Phone"
                 value={isEditing ? (
                   <input
                     type="tel"
@@ -154,45 +136,7 @@ function StudentProfile() {
                   />
                 ) : studentData.phone}
               />
-              <DetailItem 
-                icon={Calendar} 
-                label="Date of Birth" 
-                value={isEditing ? (
-                  <input
-                    type="date"
-                    value={editData.dateOfBirth}
-                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                    className="w-full p-2 bg-white/10 text-white rounded border border-white/20"
-                  />
-                ) : studentData.dateOfBirth}
-              />
-              <DetailItem 
-                icon={MapPin} 
-                label="Address" 
-                value={isEditing ? (
-                  <textarea
-                    value={editData.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    className="w-full p-2 bg-white/10 text-white rounded border border-white/20 resize-none"
-                    rows={3}
-                  />
-                ) : studentData.address}
-              />
-            </div>
-          </div>
 
-          {/* Academic Information */}
-          <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
-              <GraduationCap size={24} className="text-blue-400 mr-3" />
-              Academic Information
-            </h3>
-            <div className="space-y-4">
-              <DetailItem icon={BookOpen} label="Semester" value={studentData.semester} />
-              <DetailItem icon={Calendar} label="Admission Year" value={studentData.admissionYear} />
-              <DetailItem icon={Calendar} label="Expected Graduation" value={studentData.expectedGraduation} />
-              {/* <DetailItem icon={Award} label="CGPA" value={studentData.cgpa} />
-              <DetailItem icon={Clock} label="Attendance" value={studentData.attendance} /> */}
             </div>
           </div>
 
