@@ -372,4 +372,4 @@ const StudentManagement = () => {
   );
 };
 
-export default StudentManagement;hMAct
+export default StudentManagement;

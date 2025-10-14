@@ -580,11 +580,11 @@ function GroupManagement() {
                   />
                   <div className="flex flex-col">
                     <span className="font-semibold text-lg text-white">
-                      {member.student?.name || member.name}
+                      {member.name}
                     </span>
                     <div className="text-sm text-white/80 flex items-center">
                       <Hash size={16} className="mr-1 text-accent-teal" />
-                      <span>{member.student?.enrollmentNumber || member.enrollment}</span>
+                      <span>{member.enrollment}</span>
                     </div>
                   </div>
                 </div>

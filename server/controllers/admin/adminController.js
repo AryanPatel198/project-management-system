@@ -470,7 +470,7 @@ export const getGroupsByYearOrCourse = async (req, res) => {
       members:
         g.members?.map((m) => ({
           name: m.name || "N/A",
-          enrollment: m.enrollment || m.enrollmentNumber || "N/A",
+          enrollment: m.enrollmentNumber || m.enrollment || "N/A",
           className: m.className || "N/A",
         })) || [],
     }));
@@ -543,16 +543,21 @@ export const getGroupById = async (req, res) => {
     }
 
     // Format members for frontend consistency, using group's division
-    group.members = group.students.map(s => ({
+    const members = group.students.map((s) => ({
       _id: s._id,
       name: s.name,
       enrollment: s.enrollmentNumber,
-      className: `${group.division.course} ${group.division.semester}`,
+      className: `${group.division?.course || ""} ${group.division?.semester || ""}`.trim(),
     }));
+
+    const responseData = {
+      ...group.toObject(),
+      members,
+    };
 
     res.status(200).json({
       success: true,
-      data: group,
+      data: responseData,
     });
   } catch (err) {
     console.error("❌ Error fetching group details:", err.message);
@@ -607,7 +612,7 @@ export const getStudentsByGroup = async (req, res) => {
     const group = await Group.findById(id)
       .populate(
         "students",
-        "studentName enrollmentNumber division isRegistered"
+        "name enrollmentNumber division isRegistered"
       )
       .populate("division", "course semester year")
       .exec();
@@ -699,7 +704,7 @@ export const getAvailableStudentsForGroup = async (req, res) => {
       count: availableStudents.length,
       data: availableStudents.map((s) => ({
         enrollmentNumber: s.enrollmentNumber,
-        name: s.studentName,
+        name: s.name,
         className: `${s.division.course} ${s.division.semester}`,
       })),
     });
@@ -727,7 +732,7 @@ export const getGroups = async (req, res) => {
     const groups = await Group.find(filter)
       .populate("guide", "name email expertise phone")
       .populate("division", "course semester year")
-      .populate("students", "studentName enrollmentNumber division")
+      .populate("students", "name enrollmentNumber division")
       .exec();
 
     // Format members snapshot for frontend (fallback to students if snapshot empty)
@@ -753,10 +758,10 @@ export const getGroups = async (req, res) => {
           ? g.membersSnapshot.map((m) => ({
               name: m.name,
               enrollment: m.enrollmentNumber,
-              className: `${m.divisionCourse} ${m.divisionSemester}`, // Store these in snapshot if needed
+              className: `${m.divisionCourse} ${m.divisionSemester}`,
             }))
           : g.students.map((s) => ({
-              name: s.studentName,
+              name: s.name,
               enrollment: s.enrollmentNumber,
               className: `${s.division.course} ${s.division.semester}`,
             })),
@@ -784,7 +789,7 @@ export const updateGroup = async (req, res) => {
 
     const group = await Group.findById(id).populate(
       "students",
-      "studentName enrollmentNumber division"
+      "name enrollmentNumber division"
     );
     if (!group) {
       return res
@@ -810,7 +815,7 @@ export const updateGroup = async (req, res) => {
         ...newStudents.map((s) => ({
           studentRef: s._id,
           enrollmentNumber: s.enrollmentNumber,
-          name: s.studentName,
+          name: s.name,
           joinedAt: new Date(),
           // Store division snapshot for frontend
           divisionCourse: s.division.course,
@@ -836,7 +841,7 @@ export const updateGroup = async (req, res) => {
 
     await group.save();
     await group.populate("guide", "name email expertise phone");
-    await group.populate("students", "studentName enrollmentNumber division");
+    await group.populate("students", "name enrollmentNumber division");
 
     res.status(200).json({
       success: true,
