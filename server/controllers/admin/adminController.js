@@ -469,7 +469,7 @@ export const getGroupsByYearOrCourse = async (req, res) => {
         : null,
       members:
         g.members?.map((m) => ({
-          name: m.name || m.studentName || "N/A",
+          name: m.name || "N/A",
           enrollment: m.enrollment || m.enrollmentNumber || "N/A",
           className: m.className || "N/A",
         })) || [],
@@ -532,7 +532,7 @@ export const getGroupById = async (req, res) => {
     const group = await Group.findById(id)
       .populate("guide", "name email expertise") // fetch guide details
       .populate("division", "course semester year status") // fetch division details
-      .populate("students", "studentName enrollmentNumber") // fetch student list
+      .populate("students", "name enrollmentNumber") // fetch student list
       .exec();
 
     if (!group) {
@@ -541,6 +541,14 @@ export const getGroupById = async (req, res) => {
         message: "Group not found",
       });
     }
+
+    // Format members for frontend consistency, using group's division
+    group.members = group.students.map(s => ({
+      _id: s._id,
+      name: s.name,
+      enrollment: s.enrollmentNumber,
+      className: `${group.division.course} ${group.division.semester}`,
+    }));
 
     res.status(200).json({
       success: true,
@@ -570,7 +578,7 @@ export const getAvailableStudents = async (req, res) => {
       _id: { $nin: assignedStudentIds },
     })
       .populate("division", "course semester year status")
-      .select("studentName enrollmentNumber division isRegistered")
+      .select("name enrollmentNumber division isRegistered")
       .exec();
 
     res.status(200).json({
@@ -683,7 +691,7 @@ export const getAvailableStudentsForGroup = async (req, res) => {
       "division.year": Number(year),
     })
       .populate("division", "course semester year")
-      .select("studentName enrollmentNumber division")
+      .select("name enrollmentNumber division")
       .exec();
 
     res.status(200).json({
@@ -2231,17 +2239,18 @@ export const updateGroupDetails = async (req, res) => {
  */
 export const getAllStudents = async (req, res) => {
   try {
-    const { search, division, isRegistered } = req.query;
+    const { search, division, isRegistered, isActive } = req.query;
 
     // Build filter dynamically
     const filter = {};
     if (division) filter.division = division;
     if (isRegistered !== undefined) filter.isRegistered = isRegistered === 'true';
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     let students = await Student.find(filter)
       .populate("division", "course semester year")
       .populate("group", "name projectTitle")
-      .select("name enrollmentNumber email phone division group isRegistered")
+      .select("name enrollmentNumber email phone division group isRegistered isActive")
       .exec();
 
     // Client-side search if provided (since search is simple)

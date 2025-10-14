@@ -21,22 +21,7 @@ const guideSchema = new mongoose.Schema(
       required: true,
       minlength: 4,
     },
-    employeeId: {
-      type: String,
-      required: true,
-      trim: true,
-      unique: true,
-    },
-    department: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    designation: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+
     expertise: {
       type: String,
       default: "",

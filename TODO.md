@@ -1,3 +1,7 @@
+# TODO for Student Model Updates
+
+- [x] Add isActive field to student schema with default true
+
 # TODO for Student CRUD APIs in adminController.js
 
 - [x] Add getAllStudents function: Fetch all students with fields name, enrollmentNumber, email, phone, division (populated with course, semester, year). Include optional filters like division, isRegistered.
@@ -17,8 +21,9 @@
 
 # TODO for Removing Add Student Button
 
-- [ ] Remove "Add Student" button from StudentManagement.jsx header
-- [ ] Remove showAddModal state variable
-- [ ] Remove handleAddStudent function
-- [ ] Remove Add Student Modal JSX
-- [ ] Remove unused Plus import from lucide-react
+- [x] Remove "Add Student" button from StudentManagement.jsx header
+- [x] Remove showAddModal state variable
+- [x] Remove handleAddStudent function
+- [x] Remove Add Student Modal JSX
+- [x] Remove unused Plus import from lucide-react
+
