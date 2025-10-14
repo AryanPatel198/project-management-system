@@ -585,17 +585,16 @@ function GroupManagement() {
                     <div className="text-sm text-white/80 flex items-center">
                       <Hash size={16} className="mr-1 text-accent-teal" />
                       <span>{member.enrollment}</span>
-                      <span className="ml-4">{member.className}</span>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => {
-                    setStudentToDelete({ ...member, studentName: member.name }); // Adapt for backend
+                    setStudentToDelete({ ...member, name: member.student?.name || member.name, enrollment: member.student?.enrollmentNumber || member.enrollment });
                     setShowDeleteStudentModal(true);
                   }}
                   className="text-red-400 hover:text-red-300 transition-colors duration-200"
-                  aria-label={`Remove student ${member.name}`}
+                  aria-label={`Remove student ${member.student?.name || member.name}`}
                 >
                   <Trash2 size={24} className="animate-icon-pulse" />
                 </button>
@@ -769,7 +768,7 @@ function GroupManagement() {
               <p className="text-white/80 text-center mb-6">
                 Are you sure you want to remove{" "}
                 <span className="font-semibold text-accent-teal">
-                  {studentToDelete.studentName}
+                  {studentToDelete.name}
                 </span>{" "}
                 from{" "}
                 <span className="font-semibold text-accent-teal">

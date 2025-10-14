@@ -34,13 +34,22 @@ function GuideLogin() {
 
     try {
       const response = await authAPI.guideLogin(formData);
-      
-      // Store token and user data
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      
-      console.log('Guide login successful, navigating to /guide/dashboard');
-      navigate('/guide/dashboard');
+
+      // Check status
+      if (response.data.status === 'approved') {
+        // Store token and user data
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.data));
+
+        console.log('Guide login successful, navigating to /guide/dashboard');
+        navigate('/guide/dashboard');
+      } else if (response.data.status === 'pending') {
+        setError('Your account is pending admin approval. Please wait for approval.');
+      } else if (response.data.status === 'rejected') {
+        setError('Your account has been rejected by the admin. Please contact support.');
+      } else {
+        setError('Invalid account status. Please contact support.');
+      }
     } catch (error) {
       setError(error.message || 'Login failed. Please try again.');
       console.error('Login error:', error);

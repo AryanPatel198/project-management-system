@@ -123,14 +123,7 @@ function Dashboard() {
       description:
         "Organize and oversee student project groups and memberships.",
     },
-    {
-      name: "Students",
-      icon: User,
-      path: "students",
-      title: "Manage Students",
-      description:
-        "View, add, edit, and manage student profiles and registrations.",
-    },
+   
     {
       name: "Projects",
       icon: Briefcase,
@@ -159,6 +152,14 @@ function Dashboard() {
       title: "Evaluation Parameters",
       description:
         "Define and update project evaluation criteria and percentages.",
+    },
+     {
+      name: "Students",
+      icon: User,
+      path: "students",
+      title: "Manage Students",
+      description:
+        "View, add, edit, and manage student profiles and registrations.",
     },
   ];
 

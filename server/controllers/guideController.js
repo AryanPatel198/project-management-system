@@ -16,9 +16,6 @@ export const registerGuide = async (req, res) => {
       name,
       email,
       password,
-      employeeId,
-      department,
-      designation,
       expertise,
       phone,
     } = req.body;
@@ -27,10 +24,7 @@ export const registerGuide = async (req, res) => {
     if (
       !name ||
       !email ||
-      !password ||
-      !employeeId ||
-      !department ||
-      !designation
+      !password
     ) {
       return res.status(400).json({
         success: false,
@@ -38,14 +32,14 @@ export const registerGuide = async (req, res) => {
       });
     }
 
-    // 2️⃣ Check for duplicate email or employeeId
+    // 2️⃣ Check for duplicate email
     const existingGuide = await Guide.findOne({
-      $or: [{ email }, { employeeId }],
+      email
     });
     if (existingGuide) {
       return res.status(400).json({
         success: false,
-        message: "Guide with this email or employee ID already exists.",
+        message: "Guide with this email already exists.",
       });
     }
 
@@ -54,9 +48,6 @@ export const registerGuide = async (req, res) => {
       name,
       email,
       password,
-      employeeId,
-      department,
-      designation,
       expertise,
       phone,
     });
@@ -76,9 +67,6 @@ export const registerGuide = async (req, res) => {
           id: newGuide._id,
           name: newGuide.name,
           email: newGuide.email,
-          employeeId: newGuide.employeeId,
-          department: newGuide.department,
-          designation: newGuide.designation,
           expertise: newGuide.expertise,
           phone: newGuide.phone,
           status: newGuide.status,
@@ -144,9 +132,6 @@ export const loginGuide = async (req, res) => {
           id: guide._id,
           name: guide.name,
           email: guide.email,
-          employeeId: guide.employeeId,
-          department: guide.department,
-          designation: guide.designation,
           expertise: guide.expertise,
           phone: guide.phone,
           status: guide.status,
@@ -186,9 +171,6 @@ export const getAuthenticatedGuide = async (req, res) => {
         id: guide._id,
         name: guide.name,
         email: guide.email,
-        employeeId: guide.employeeId,
-        department: guide.department,
-        designation: guide.designation,
         expertise: guide.expertise,
         phone: guide.phone,
         status: guide.status,
