@@ -1,21 +1,21 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = "http://localhost:5000/api";
 
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   // Get token from localStorage
-  const token = localStorage.getItem('token');
-  
+  const token = localStorage.getItem("token");
+
   const defaultOptions = {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   };
 
   // Add Authorization header if token exists
   if (token) {
-    defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+    defaultOptions.headers["Authorization"] = `Bearer ${token}`;
   }
 
   const config = {
@@ -29,22 +29,24 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, config);
-    
+
     // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server returned non-JSON response. Please check if the backend server is running.');
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error(
+        "Server returned non-JSON response. Please check if the backend server is running."
+      );
     }
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      throw new Error(data.message || "Something went wrong");
     }
-    
+
     return data;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error("API Error:", error);
     throw error;
   }
 };
@@ -53,172 +55,182 @@ const apiRequest = async (endpoint, options = {}) => {
 export const authAPI = {
   // Admin Login
   login: async (credentials) => {
-    const response = await apiRequest('/auth/login', {
-      method: 'POST',
+    const response = await apiRequest("/auth/login", {
+      method: "POST",
       body: JSON.stringify(credentials),
     });
-    
+
     // Return the data in the format expected by the frontend
     return {
       token: response.data.token,
-      data: response.data.data
+      data: response.data.data,
     };
   },
 
   // Admin Register
   register: async (userData) => {
-    const response = await apiRequest('/auth/register', {
-      method: 'POST',
+    const response = await apiRequest("/auth/register", {
+      method: "POST",
       body: JSON.stringify(userData),
     });
-    
+
     // Return the data in the format expected by the frontend
     return {
       token: response.data.token,
-      data: response.data.data
+      data: response.data.data,
     };
   },
 
   // Guide Login
   guideLogin: async (credentials) => {
-    const response = await apiRequest('/auth/guide/login', {
-      method: 'POST',
+    const response = await apiRequest("/auth/guide/login", {
+      method: "POST",
       body: JSON.stringify(credentials),
     });
-    
+
     // Return the data in the format expected by the frontend
     return {
       token: response.data.token,
-      data: response.data.data
+      data: response.data.data,
     };
   },
 
   // Guide Register
   guideRegister: async (userData) => {
-    const response = await apiRequest('/auth/guide/register', {
-      method: 'POST',
+    const response = await apiRequest("/auth/guide/register", {
+      method: "POST",
       body: JSON.stringify(userData),
     });
-    
+
     // Return the data in the format expected by the frontend
     return {
       token: response.data.token,
-      data: response.data.data
+      data: response.data.data,
     };
   },
 
   // Logout (client-side)
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
   },
 
   // Get current user from localStorage
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem("user");
     return user ? JSON.parse(user) : null;
   },
 
   // Check if user is authenticated
   isAuthenticated: () => {
-    return !!localStorage.getItem('token');
+    return !!localStorage.getItem("token");
   },
 
   // Get current guide profile
   getGuideProfile: async () => {
-    const token = localStorage.getItem('token');
-    const response = await apiRequest('/auth/guide/me', {
-      method: 'GET',
+    const token = localStorage.getItem("token");
+    const response = await apiRequest("/auth/guide/me", {
+      method: "GET",
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
-    
+
     return response.data;
   },
 
   // Update guide profile
   updateGuideProfile: async (profileData) => {
-    const token = localStorage.getItem('token');
-    const response = await apiRequest('/auth/guide/me', {
-      method: 'PUT',
+    const token = localStorage.getItem("token");
+    const response = await apiRequest("/auth/guide/me", {
+      method: "PUT",
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
-    
+
     return response.data;
   },
 
   // Change guide password
   changeGuidePassword: async (passwordData) => {
-    const token = localStorage.getItem('token');
-    const response = await apiRequest('/auth/guide/change-password', {
-      method: 'PUT',
+    const token = localStorage.getItem("token");
+    const response = await apiRequest("/auth/guide/change-password", {
+      method: "PUT",
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(passwordData)
+      body: JSON.stringify(passwordData),
     });
-    
+
     return response.data;
-  }
+  },
 };
 
 export const groupAPI = {
-  getAllGroups: () => apiRequest('/groups'),
+  getAllGroups: () => apiRequest("/groups"),
   getGroupById: (id) => apiRequest(`/groups/${id}`),
   getGroupsByGuide: (guideId) => apiRequest(`/groups/guide/${guideId}`),
-  createGroup: (data) => apiRequest('/groups', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  updateGroup: (id, data) => apiRequest(`/groups/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  updateProjectDetails: (id, data) => apiRequest(`/groups/${id}/project`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  deleteGroup: (id) => apiRequest(`/groups/${id}`, {
-    method: 'DELETE',
-  }),
+  createGroup: (data) =>
+    apiRequest("/groups", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateGroup: (id, data) =>
+    apiRequest(`/groups/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  updateProjectDetails: (id, data) =>
+    apiRequest(`/groups/${id}/project`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteGroup: (id) =>
+    apiRequest(`/groups/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const guideAPI = {
-  getAllGuides: () => apiRequest('/guides'),
+  getAllGuides: () => apiRequest("/guides"),
   getGuideById: (id) => apiRequest(`/guides/${id}`),
-  createGuide: (data) => apiRequest('/guides', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  updateGuide: (id, data) => apiRequest(`/guides/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  deleteGuide: (id) => apiRequest(`/guides/${id}`, {
-    method: 'DELETE',
-  }),
+  createGuide: (data) =>
+    apiRequest("/guides", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateGuide: (id, data) =>
+    apiRequest(`/guides/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteGuide: (id) =>
+    apiRequest(`/guides/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const projectAPI = {
-  getAllProjects: () => apiRequest('/projects'),
+  getAllProjects: () => apiRequest("/projects"),
   getProjectById: (id) => apiRequest(`/projects/${id}`),
-  createProject: (data) => apiRequest('/projects', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  updateProject: (id, data) => apiRequest(`/projects/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  deleteProject: (id) => apiRequest(`/projects/${id}`, {
-    method: 'DELETE',
-  }),
+  createProject: (data) =>
+    apiRequest("/projects", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateProject: (id, data) =>
+    apiRequest(`/projects/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteProject: (id) =>
+    apiRequest(`/projects/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 // Guide Panel API - Merged from guidePanelAPI.js
@@ -229,20 +241,22 @@ export const guidePanelAPI = {
     try {
       const [groupsData, announcementsData] = await Promise.all([
         guidePanelAPI.getGroups().catch(() => []),
-        guidePanelAPI.getCommunication({ type: 'announcement' }).catch(() => [])
+        guidePanelAPI
+          .getCommunication({ type: "announcement" })
+          .catch(() => []),
       ]);
 
       return {
         groups: groupsData || [],
         announcements: announcementsData || [],
-        profile: null
+        profile: null,
       };
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error("Error fetching dashboard data:", error);
       return {
         groups: [],
         announcements: [],
-        profile: null
+        profile: null,
       };
     }
   },
@@ -251,7 +265,7 @@ export const guidePanelAPI = {
   getGroups: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     const response = await apiRequest(`/guide-panel/groups?${queryString}`, {
-      method: 'GET',
+      method: "GET",
     });
     return response.data;
   },
@@ -262,7 +276,7 @@ export const guidePanelAPI = {
    */
   getGroupDetails: async (groupId) => {
     const response = await apiRequest(`/guide-panel/groups/${groupId}`, {
-      method: 'GET',
+      method: "GET",
     });
     return response.data;
   },
@@ -274,7 +288,7 @@ export const guidePanelAPI = {
    */
   updateGroup: async (groupId, groupData) => {
     const response = await apiRequest(`/guide-panel/groups/${groupId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(groupData),
     });
     return response.data;
@@ -286,10 +300,13 @@ export const guidePanelAPI = {
    * @returns {Promise<object>} Updated group details
    */
   updateGroupDetails: async (groupId, groupData) => {
-    const response = await apiRequest(`/guide-panel/groups/${groupId}/details`, {
-      method: 'PUT',
-      body: JSON.stringify(groupData),
-    });
+    const response = await apiRequest(
+      `/guide-panel/groups/${groupId}/details`,
+      {
+        method: "PUT",
+        body: JSON.stringify(groupData),
+      }
+    );
     return response.data;
   },
 
@@ -297,9 +314,12 @@ export const guidePanelAPI = {
    * @param {string} groupId
    */
   getAvailableStudentsForGroup: async (groupId) => {
-    const response = await apiRequest(`/guide-panel/groups/${groupId}/available-students`, {
-      method: 'GET',
-    });
+    const response = await apiRequest(
+      `/guide-panel/groups/${groupId}/available-students`,
+      {
+        method: "GET",
+      }
+    );
     return response.data;
   },
 
@@ -307,7 +327,7 @@ export const guidePanelAPI = {
   getStudents: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     const response = await apiRequest(`/guide-panel/students?${queryString}`, {
-      method: 'GET',
+      method: "GET",
     });
     return response.data;
   },
@@ -317,9 +337,14 @@ export const guidePanelAPI = {
    * @returns {Promise<object[]>} Search results
    */
   searchStudents: async (enrollment) => {
-    const response = await apiRequest(`/guide-panel/students/search?enrollment=${encodeURIComponent(enrollment)}`, {
-      method: 'GET',
-    });
+    const response = await apiRequest(
+      `/guide-panel/students/search?enrollment=${encodeURIComponent(
+        enrollment
+      )}`,
+      {
+        method: "GET",
+      }
+    );
     return response.data;
   },
 
@@ -329,7 +354,7 @@ export const guidePanelAPI = {
    */
   getStudentDetails: async (studentId) => {
     const response = await apiRequest(`/guide-panel/students/${studentId}`, {
-      method: 'GET',
+      method: "GET",
     });
     return response.data;
   },
@@ -352,67 +377,89 @@ export const guidePanelAPI = {
 
   // Project Management (Not implemented in backend yet)
   getProjects: async (params = {}) => {
-    console.warn('getProjects endpoint not implemented in backend yet');
+    console.warn("getProjects endpoint not implemented in backend yet");
     return [];
   },
 
   getProjectDetails: async (projectId) => {
-    console.warn('getProjectDetails endpoint not implemented in backend yet');
+    console.warn("getProjectDetails endpoint not implemented in backend yet");
     return null;
   },
 
   evaluateProject: async (projectId, evaluationData) => {
-    console.warn('evaluateProject endpoint not implemented in backend yet');
+    console.warn("evaluateProject endpoint not implemented in backend yet");
     return null;
   },
 
   // Project Approval (Not implemented in backend yet)
   getProjectApprovals: async (params = {}) => {
-    console.warn('getProjectApprovals endpoint not implemented in backend yet');
-    return [];
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiRequest(
+      `/guide-panel/project-approvals?${queryString}`,
+      {
+        method: "GET",
+      }
+    );
+    return response.data;
   },
 
-  updateProjectApproval: async (projectId, approvalData) => {
-    console.warn('updateProjectApproval endpoint not implemented in backend yet');
-    return null;
+  approveProject: async (groupId) => {
+    const response = await apiRequest(
+      `/guide-panel/project-approvals/${groupId}/approve`,
+      {
+        method: "PUT",
+      }
+    );
+    return response.data;
+  },
+
+  rejectProject: async (groupId, reason) => {
+    const response = await apiRequest(
+      `/guide-panel/project-approvals/${groupId}/reject`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ reason }),
+      }
+    );
+    return response.data;
   },
 
   // Feedback System (Not implemented in backend yet)
   getFeedback: async (params = {}) => {
-    console.warn('getFeedback endpoint not implemented in backend yet');
+    console.warn("getFeedback endpoint not implemented in backend yet");
     return [];
   },
 
   submitFeedback: async (feedbackData) => {
-    console.warn('submitFeedback endpoint not implemented in backend yet');
+    console.warn("submitFeedback endpoint not implemented in backend yet");
     return null;
   },
 
   // Seminar Schedule (Not implemented in backend yet)
   getSeminarSchedule: async (params = {}) => {
-    console.warn('getSeminarSchedule endpoint not implemented in backend yet');
+    console.warn("getSeminarSchedule endpoint not implemented in backend yet");
     return [];
   },
 
   scheduleSeminar: async (seminarData) => {
-    console.warn('scheduleSeminar endpoint not implemented in backend yet');
+    console.warn("scheduleSeminar endpoint not implemented in backend yet");
     return null;
   },
 
   // Communication (Not implemented in backend yet)
   getCommunication: async (params = {}) => {
-    console.warn('getCommunication endpoint not implemented in backend yet');
+    // console.warn('getCommunication endpoint not implemented in backend yet');
     return [];
   },
 
   sendMessage: async (messageData) => {
-    console.warn('sendMessage endpoint not implemented in backend yet');
+    console.warn("sendMessage endpoint not implemented in backend yet");
     return null;
   },
 
   // Reports & Analytics (Not implemented in backend yet)
   getReports: async (type, params = {}) => {
-    console.warn('getReports endpoint not implemented in backend yet');
+    console.warn("getReports endpoint not implemented in backend yet");
     return null;
   },
 };

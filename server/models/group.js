@@ -34,6 +34,22 @@ const groupSchema = new mongoose.Schema(
       maxlength: 100,
       trim: true,
     },
+    // Optional link to an uploaded or external proposal PDF
+    proposalPdf: {
+      type: String,
+      trim: true,
+    },
+    // Separate approval lifecycle for proposals handled by guides
+    projectApprovalStatus: {
+      type: String,
+      enum: ["Pending", "Approved", "Rejected"],
+      default: "Pending",
+    },
+    rejectionReason: {
+      type: String,
+      maxlength: 1000,
+      trim: true,
+    },
     year: {
       type: Number,
       required: true,

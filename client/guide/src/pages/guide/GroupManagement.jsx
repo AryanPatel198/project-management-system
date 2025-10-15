@@ -58,7 +58,7 @@ function GroupManagement() {
         setLoading(true);
         const res = await guidePanelAPI.getGroups();
         // Map to local card structure
-        console.log(res);
+        // console.log(res);
         const mapped = (res || []).map(g => ({
           id: g.id,
           name: g.groupName || g.name || 'Group',

@@ -20,6 +20,9 @@ import {
   updateGroupDetailsAndMembers,
   searchStudentsByEnrollment,
   getAvailableStudentsForGroup,
+  listProjectApprovalsForGuide,
+  approveProjectProposal,
+  rejectProjectProposal,
 } from "../controllers/guideController.js"; 
 
 
@@ -94,6 +97,20 @@ guidePanelRouter.get("/students/search", searchStudentsByEnrollment);
 guidePanelRouter.get(
   "/groups/:groupId/available-students",
   getAvailableStudentsForGroup
+);
+
+// Project Approval routes
+// GET /api/guide-panel/project-approvals
+guidePanelRouter.get("/project-approvals", listProjectApprovalsForGuide);
+// PUT /api/guide-panel/project-approvals/:groupId/approve
+guidePanelRouter.put(
+  "/project-approvals/:groupId/approve",
+  approveProjectProposal
+);
+// PUT /api/guide-panel/project-approvals/:groupId/reject
+guidePanelRouter.put(
+  "/project-approvals/:groupId/reject",
+  rejectProjectProposal
 );
 
 // Mount the guidePanelRouter

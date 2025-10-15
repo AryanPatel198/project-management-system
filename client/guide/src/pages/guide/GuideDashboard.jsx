@@ -40,12 +40,12 @@ export default function GuideDashboard() {
 
       // Fetch dashboard data using the unified endpoint
       const dashboardData = await guidePanelAPI.getDashboard();
-      console.log(dashboardData);
+      // console.log(dashboardData);
       setAssignedGroups(dashboardData.groups || []);
       setRecentAnnouncements(dashboardData.announcements || []);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data");
       setAssignedGroups([]);
       setRecentAnnouncements([]);
     } finally {
@@ -231,7 +231,9 @@ export default function GuideDashboard() {
   );
   const averageProgress =
     totalGroups > 0 ? Math.round(totalProgress / totalGroups) : 0;
-  const onTrackGroups = assignedGroups.filter((g) => (g.progress || 0) >= 70).length;
+  const onTrackGroups = assignedGroups.filter(
+    (g) => (g.progress || 0) >= 70
+  ).length;
   const needsAttentionGroups = assignedGroups.filter(
     (g) => (g.progress || 0) < 50
   ).length;
@@ -279,9 +281,7 @@ export default function GuideDashboard() {
             <h2 className="text-2xl font-bold text-white">
               Error Loading Dashboard
             </h2>
-            <p className="text-purple-200/70 text-center">
-              {error}
-            </p>
+            <p className="text-purple-200/70 text-center">{error}</p>
             <button
               onClick={fetchDashboardData}
               className="mt-4 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-xl transition-colors duration-300"
@@ -329,7 +329,9 @@ export default function GuideDashboard() {
               >
                 <Clock
                   size={20}
-                  className={`group-hover:scale-110 transition-transform ${loading ? 'animate-spin' : ''}`}
+                  className={`group-hover:scale-110 transition-transform ${
+                    loading ? "animate-spin" : ""
+                  }`}
                 />
               </button>
 
@@ -502,78 +504,80 @@ export default function GuideDashboard() {
               </Link>
             </div>
 
-             <div className="space-y-6">
-               {/* Conditional rendering for empty state */}
-               {assignedGroups.length === 0 ? (
-                 <div className="text-center py-10 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
-                   <AlertCircle
-                     size={24}
-                     className="mx-auto mb-3 text-purple-400"
-                   />
-                   <p>No assigned groups found.</p>
-                   <p className="text-sm mt-1">
-                     Please check your server connection or assignment status.
-                   </p>
-                 </div>
-               ) : (
-                 assignedGroups.map((group) => (
-                   <div
-                     key={group.id || group._id}
-                     className="group bg-white/10 p-6 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
-                   >
-                     <div className="flex items-start justify-between mb-4">
-                       <div>
-                         <h4 className="font-bold text-white text-lg group-hover:text-purple-200 transition-colors">
-                           {group.groupName || group.name || 'Unnamed Group'}
-                         </h4>
-                         <p className="text-purple-200/70 text-sm mt-1">
-                           {group.projectTitle || group.project || 'No project title'}
-                         </p>
-                       </div>
-                       <span
-                         className={`px-4 py-2 rounded-full text-xs font-bold border ${getStatusColor(
-                           group.status || 'In Progress'
-                         )}`}
-                       >
-                         {group.status || 'In Progress'}
-                       </span>
-                     </div>
+            <div className="space-y-6">
+              {/* Conditional rendering for empty state */}
+              {assignedGroups.length === 0 ? (
+                <div className="text-center py-10 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
+                  <AlertCircle
+                    size={24}
+                    className="mx-auto mb-3 text-purple-400"
+                  />
+                  <p>No assigned groups found.</p>
+                  <p className="text-sm mt-1">
+                    Please check your server connection or assignment status.
+                  </p>
+                </div>
+              ) : (
+                assignedGroups.map((group) => (
+                  <div
+                    key={group.id || group._id}
+                    className="group bg-white/10 p-6 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-white text-lg group-hover:text-purple-200 transition-colors">
+                          {group.groupName || group.name || "Unnamed Group"}
+                        </h4>
+                        <p className="text-purple-200/70 text-sm mt-1">
+                          {group.projectTitle ||
+                            group.project ||
+                            "No project title"}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-4 py-2 rounded-full text-xs font-bold border ${getStatusColor(
+                          group.status || "In Progress"
+                        )}`}
+                      >
+                        {group.status || "In Progress"}
+                      </span>
+                    </div>
 
-                     <div className="flex items-center justify-between text-sm mb-4">
-                       <span className="text-purple-200/70 font-medium">
-                         Progress:
-                       </span>
-                       <div className="flex items-center gap-3">
-                         <div className="w-24 bg-white/10 rounded-full h-3 overflow-hidden">
-                           <div
-                             className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 ease-out"
-                             style={{ width: `${group.progress || 0}%` }}
-                           ></div>
-                         </div>
-                         <span className="text-white font-bold">
-                           {group.progress || 0}%
-                         </span>
-                       </div>
-                     </div>
+                    <div className="flex items-center justify-between text-sm mb-4">
+                      <span className="text-purple-200/70 font-medium">
+                        Progress:
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-24 bg-white/10 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${group.progress || 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-white font-bold">
+                          {group.progress || 0}%
+                        </span>
+                      </div>
+                    </div>
 
-                     <div className="flex items-center justify-between text-sm">
-                       <div className="flex items-center gap-2">
-                         <Users size={16} className="text-purple-200/70" />
-                         <span className="text-purple-200/70">
-                           {group.members?.length || 0} members
-                         </span>
-                       </div>
-                       <div className="flex items-center gap-2">
-                         <Calendar size={16} className="text-purple-200/70" />
-                         <span className="text-purple-200/70">
-                           Next: {group.nextSeminar || 'TBD'}
-                         </span>
-                       </div>
-                     </div>
-                   </div>
-                 ))
-               )}
-             </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Users size={16} className="text-purple-200/70" />
+                        <span className="text-purple-200/70">
+                          {group.members?.length || 0} members
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-purple-200/70" />
+                        <span className="text-purple-200/70">
+                          Next: {group.nextSeminar || "TBD"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Recent Announcements & Seminars */}
@@ -594,54 +598,60 @@ export default function GuideDashboard() {
                 </span>
               </div>
 
-               <div className="space-y-4">
-                 {/* Conditional rendering for empty state */}
-                 {recentAnnouncements.length === 0 ? (
-                   <div className="text-center py-6 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
-                     <AlertCircle
-                       size={20}
-                       className="mx-auto mb-2 text-purple-400"
-                     />
-                     <p className="text-sm">No recent announcements.</p>
-                   </div>
-                 ) : (
-                   recentAnnouncements.map((announcement) => (
-                     <div
-                       key={announcement.id || announcement._id}
-                       className="group bg-white/10 p-4 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
-                     >
-                       <div className="flex items-start gap-4">
-                         <div
-                           className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
-                             (announcement.priority || 'low') === "high"
-                               ? "bg-gradient-to-r from-red-400 to-pink-400"
-                               : (announcement.priority || 'low') === "medium"
-                               ? "bg-gradient-to-r from-orange-400 to-yellow-400"
-                               : "bg-gradient-to-r from-green-400 to-emerald-400"
-                           }`}
-                         ></div>
-                         <div className="flex-1">
-                           <h4 className="font-bold text-white text-sm group-hover:text-purple-200 transition-colors">
-                             {announcement.title || announcement.subject || 'Untitled Announcement'}
-                           </h4>
-                           <p className="text-purple-200/70 text-xs mt-2 leading-relaxed">
-                             {announcement.content || announcement.message || 'No content available'}
-                           </p>
-                           <div className="flex items-center gap-2 mt-3">
-                             <Calendar
-                               size={12}
-                               className="text-purple-200/50"
-                             />
-                             <p className="text-purple-200/50 text-xs">
-                               {announcement.date || announcement.createdAt || 'Unknown date'}
-                             </p>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                   ))
-                 )}
-               </div>
+              <div className="space-y-4">
+                {/* Conditional rendering for empty state */}
+                {recentAnnouncements.length === 0 ? (
+                  <div className="text-center py-6 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
+                    <AlertCircle
+                      size={20}
+                      className="mx-auto mb-2 text-purple-400"
+                    />
+                    <p className="text-sm">No recent announcements.</p>
+                  </div>
+                ) : (
+                  recentAnnouncements.map((announcement) => (
+                    <div
+                      key={announcement.id || announcement._id}
+                      className="group bg-white/10 p-4 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
+                            (announcement.priority || "low") === "high"
+                              ? "bg-gradient-to-r from-red-400 to-pink-400"
+                              : (announcement.priority || "low") === "medium"
+                              ? "bg-gradient-to-r from-orange-400 to-yellow-400"
+                              : "bg-gradient-to-r from-green-400 to-emerald-400"
+                          }`}
+                        ></div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-white text-sm group-hover:text-purple-200 transition-colors">
+                            {announcement.title ||
+                              announcement.subject ||
+                              "Untitled Announcement"}
+                          </h4>
+                          <p className="text-purple-200/70 text-xs mt-2 leading-relaxed">
+                            {announcement.content ||
+                              announcement.message ||
+                              "No content available"}
+                          </p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Calendar
+                              size={12}
+                              className="text-purple-200/50"
+                            />
+                            <p className="text-purple-200/50 text-xs">
+                              {announcement.date ||
+                                announcement.createdAt ||
+                                "Unknown date"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

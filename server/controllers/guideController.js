@@ -738,6 +738,7 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
       year,
       technology,
       members = [], // array of student ids
+      proposalPdf,
     } = req.body || {};
 
     const group = await Group.findOne({ _id: groupId, guide: guideId });
@@ -805,6 +806,7 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
       group.projectDescription = projectDescription;
     if (technology !== undefined) group.projectTechnology = technology;
     if (year !== undefined) group.year = year;
+    if (proposalPdf !== undefined) group.proposalPdf = proposalPdf;
 
     await group.save();
 
@@ -821,6 +823,9 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
         technology: populated.projectTechnology || "",
         year: populated.year,
         status: populated.status,
+        proposalPdf: populated.proposalPdf || null,
+        projectApprovalStatus: populated.projectApprovalStatus,
+        rejectionReason: populated.rejectionReason || null,
         members: (populated.students || []).map((s) => ({
           id: s._id,
           name: s.name,
@@ -834,6 +839,110 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
     if (error.name === "ValidationError") {
       return res.status(400).json({ success: false, message: error.message });
     }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * @desc    List project proposals assigned to the current guide
+ *          Mirrors groups but surfaces proposal/approval fields prominently
+ * @route   GET /api/guide-panel/project-approvals
+ * @access  Private (Guide)
+ */
+export const listProjectApprovalsForGuide = async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const groups = await Group.find({ guide: guideId })
+      .populate("students", "name email enrollmentNumber")
+      .lean();
+
+    const data = groups.map((g) => ({
+      id: g._id,
+      title: g.projectTitle || "",
+      description: g.projectDescription || "",
+      technology: g.projectTechnology || "",
+      status: g.status,
+      projectApprovalStatus: g.projectApprovalStatus,
+      rejectionReason: g.rejectionReason || null,
+      assignedGroup: g.name,
+      proposalPdf: g.proposalPdf || null,
+      members: (g.students || []).map((s) => ({
+        id: s._id,
+        name: s.name,
+        role: "Member",
+      })),
+    }));
+
+    res.status(200).json({ data });
+  } catch (error) {
+    console.error("Error listing project approvals:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * @desc    Approve a project's proposal
+ * @route   PUT /api/guide-panel/project-approvals/:groupId/approve
+ * @access  Private (Guide)
+ */
+export const approveProjectProposal = async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const { groupId } = req.params;
+    const group = await Group.findOne({ _id: groupId, guide: guideId });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+    group.projectApprovalStatus = "Approved";
+    group.rejectionReason = undefined;
+    await group.save();
+    return res.status(200).json({
+      data: {
+        id: group._id,
+        projectApprovalStatus: group.projectApprovalStatus,
+      },
+    });
+  } catch (error) {
+    console.error("Error approving project:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * @desc    Reject a project's proposal with reason
+ * @route   PUT /api/guide-panel/project-approvals/:groupId/reject
+ * @access  Private (Guide)
+ */
+export const rejectProjectProposal = async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const { groupId } = req.params;
+    const { reason = "" } = req.body || {};
+    if (!reason.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Rejection reason is required" });
+    }
+    const group = await Group.findOne({ _id: groupId, guide: guideId });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+    group.projectApprovalStatus = "Rejected";
+    group.rejectionReason = reason;
+    await group.save();
+    return res.status(200).json({
+      data: {
+        id: group._id,
+        projectApprovalStatus: group.projectApprovalStatus,
+        rejectionReason: group.rejectionReason,
+      },
+    });
+  } catch (error) {
+    console.error("Error rejecting project:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
