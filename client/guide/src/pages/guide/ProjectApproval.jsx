@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Briefcase, Code, Edit, X, ChevronDown, MessageSquare, CheckCircle, FileText, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { guidePanelAPI } from '../../services/api';
 
 // Reusable FilterDropdown component
 const FilterDropdown = ({ title, options, selected, onSelect, className = '' }) => {
@@ -58,67 +59,10 @@ const FilterDropdown = ({ title, options, selected, onSelect, className = '' }) 
 function ProjectApproval() {
   const navigate = useNavigate();
 
-  // Mock project data - adapted for guide view (only projects assigned to guide's groups)
-  const [projects, setProjects] = useState([
-    {
-      id: 'p1',
-      title: 'E-commerce Platform',
-      description: 'A web-based platform for online shopping with secure payment gateways.',
-      technology: 'MERN Stack',
-      status: 'In Progress',
-      assignedGroup: 'Alpha Team',
-      proposalPdf: 'https://example.com/proposals/ecommerce-platform.pdf',
-      members: [
-        { id: 's1', name: 'John Doe', role: 'Team Lead' },
-        { id: 's2', name: 'Jane Smith', role: 'Developer' },
-        { id: 's3', name: 'Bob Johnson', role: 'Designer' },
-        { id: 's4', name: 'Alice Brown', role: 'Tester' }
-      ]
-    },
-    {
-      id: 'p2',
-      title: 'Real-time Chat App',
-      description: 'A messaging app with fast and secure communication features.',
-      technology: 'Flutter',
-      status: 'In Progress',
-      assignedGroup: 'Beta Squad',
-      proposalPdf: 'https://example.com/proposals/chat-app.pdf',
-      members: [
-        { id: 's5', name: 'Charlie Wilson', role: 'Team Lead' },
-        { id: 's6', name: 'Diana Prince', role: 'Developer' },
-        { id: 's7', name: 'Eve Adams', role: 'Designer' }
-      ]
-    },
-    {
-      id: 'p3',
-      title: 'Online Learning System',
-      description: 'A platform for students to access courses and track progress.',
-      technology: 'PHP / MySQL',
-      status: 'Completed',
-      assignedGroup: 'Project Phoenix',
-      proposalPdf: 'https://example.com/proposals/learning-system.pdf',
-      members: [
-        { id: 's8', name: 'Frank Miller', role: 'Team Lead' },
-        { id: 's9', name: 'Grace Lee', role: 'Developer' },
-        { id: 's10', name: 'Henry Ford', role: 'Designer' },
-        { id: 's11', name: 'Ivy Chen', role: 'Tester' }
-      ]
-    },
-    {
-      id: 'p4',
-      title: 'AI Recommendation System',
-      description: 'A system providing personalized recommendations based on user behavior.',
-      technology: 'Python / ML',
-      status: 'Not Started',
-      assignedGroup: 'Quantum Coders',
-      proposalPdf: 'https://example.com/proposals/ai-recommendation.pdf',
-      members: [
-        { id: 's12', name: 'Jack Ryan', role: 'Team Lead' },
-        { id: 's13', name: 'Kate Bishop', role: 'Developer' },
-        { id: 's14', name: 'Liam Neeson', role: 'Designer' }
-      ]
-    }
-  ]);
+  // Data
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
 
 
@@ -135,7 +79,7 @@ function ProjectApproval() {
 
   // Filter options
   const statusOptions = ['All', 'Not Started', 'In Progress', 'Completed', 'Approved', 'Rejected'];
-  const techOptions = ['All', ...new Set(projects.map(project => project.technology))];
+  const techOptions = ['All', ...new Set(projects.map(project => project.technology).filter(Boolean))];
 
   // Available technologies for editing
   const availableTechnologies = [
@@ -161,6 +105,23 @@ function ProjectApproval() {
   });
 
 
+
+  // Initial load
+  useEffect(() => {
+    const loadApprovals = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const data = await guidePanelAPI.getProjectApprovals();
+        setProjects(data || []);
+      } catch (e) {
+        setError('Failed to load projects');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadApprovals();
+  }, []);
 
   // Handle back navigation
   const handleBack = () => {
@@ -190,28 +151,39 @@ function ProjectApproval() {
   };
 
   // Handle save project (guides can edit title, description, and technology)
-  const handleSaveProject = () => {
+  const handleSaveProject = async () => {
     if (!editProject.title || !editProject.description || !editProject.technology) {
       setSuccessMessage('Please fill all required fields!');
       setTimeout(() => setSuccessMessage(''), 3000);
       return;
     }
-    // Update existing project (guides can edit title, description, and technology)
-    setProjects(projects.map(p => (p.id === editProject.id ? {
-      ...p,
-      title: editProject.title,
-      description: editProject.description,
-      technology: editProject.technology
-    } : p)));
-    setSelectedProject({
-      ...selectedProject,
-      title: editProject.title,
-      description: editProject.description,
-      technology: editProject.technology
-    });
-    setSuccessMessage(`Project "${editProject.title}" updated successfully!`);
-    setShowEditModal(false);
-    setTimeout(() => setSuccessMessage(''), 3000);
+    try {
+      const payload = {
+        projectTitle: editProject.title,
+        projectDescription: editProject.description,
+        technology: editProject.technology,
+      };
+      const updated = await guidePanelAPI.updateGroupDetails(editProject.id, payload);
+      // sync local state
+      setProjects(projects.map(p => (p.id === editProject.id ? {
+        ...p,
+        title: updated.projectTitle || editProject.title,
+        description: updated.description || editProject.description,
+        technology: updated.technology || editProject.technology,
+      } : p)));
+      setSelectedProject(prev => prev && prev.id === editProject.id ? {
+        ...prev,
+        title: updated.projectTitle || editProject.title,
+        description: updated.description || editProject.description,
+        technology: updated.technology || editProject.technology,
+      } : prev);
+      setSuccessMessage(`Project "${editProject.title}" updated successfully!`);
+      setShowEditModal(false);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (e) {
+      setSuccessMessage('Failed to update project');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    }
   };
 
   // Handle provide feedback navigation
@@ -220,13 +192,19 @@ function ProjectApproval() {
   };
 
   // Handle approve project
-  const handleApproveProject = (project) => {
-    setProjects(projects.map(p => (p.id === project.id ? { ...p, status: 'Approved' } : p)));
-    if (selectedProject && selectedProject.id === project.id) {
-      setSelectedProject({ ...selectedProject, status: 'Approved' });
+  const handleApproveProject = async (project) => {
+    try {
+      const updated = await guidePanelAPI.updateProjectApproval(project.id, { action: 'approve' });
+      setProjects(projects.map(p => (p.id === project.id ? { ...p, status: updated.status, rejectionReason: '' } : p)));
+      if (selectedProject && selectedProject.id === project.id) {
+        setSelectedProject({ ...selectedProject, status: updated.status, rejectionReason: '' });
+      }
+      setSuccessMessage(`Project "${project.title}" has been approved!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (e) {
+      setSuccessMessage('Failed to approve project');
+      setTimeout(() => setSuccessMessage(''), 3000);
     }
-    setSuccessMessage(`Project "${project.title}" has been approved!`);
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   // Handle reject project - open modal
@@ -236,14 +214,20 @@ function ProjectApproval() {
   };
 
   // Handle confirm reject
-  const handleConfirmReject = () => {
-    if (projectToReject) {
-      setProjects(projects.map(p => (p.id === projectToReject.id ? { ...p, status: 'Rejected', rejectionReason } : p)));
+  const handleConfirmReject = async () => {
+    if (!projectToReject) return;
+    try {
+      const updated = await guidePanelAPI.updateProjectApproval(projectToReject.id, { action: 'reject', reason: rejectionReason });
+      setProjects(projects.map(p => (p.id === projectToReject.id ? { ...p, status: updated.status, rejectionReason: updated.rejectionReason || rejectionReason } : p)));
       if (selectedProject && selectedProject.id === projectToReject.id) {
-        setSelectedProject({ ...selectedProject, status: 'Rejected', rejectionReason });
+        setSelectedProject({ ...selectedProject, status: updated.status, rejectionReason: updated.rejectionReason || rejectionReason });
       }
       setSuccessMessage(`Project "${projectToReject.title}" has been rejected!`);
       setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (e) {
+      setSuccessMessage('Failed to reject project');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } finally {
       setShowRejectModal(false);
       setRejectionReason('');
       setProjectToReject(null);
@@ -387,7 +371,9 @@ function ProjectApproval() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredProjects.length > 0 ? (
+        {loading ? (
+          <p className="text-white/70 text-center col-span-full py-8">Loading...</p>
+        ) : filteredProjects.length > 0 ? (
           filteredProjects.map((project, index) => (
             <div
               key={project.id}
@@ -416,6 +402,8 @@ function ProjectApproval() {
               </div>
             </div>
           ))
+        ) : error ? (
+          <p className="text-red-300 text-center col-span-full py-8">{error}</p>
         ) : (
           <p className="text-white/70 text-center col-span-full py-8">No projects found.</p>
         )}

@@ -58,8 +58,19 @@ const groupSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["Not Started", "In Progress", "Completed"],
+      enum: ["Not Started", "In Progress", "Completed", "Approved", "Rejected"],
       default: "Not Started",
+    },
+    rejectionReason: {
+      type: String,
+      maxlength: 1000,
+      trim: true,
+      default: "",
+    },
+    proposalPdf: {
+      type: String,
+      trim: true,
+      default: "",
     },
   },
   { timestamps: true }
