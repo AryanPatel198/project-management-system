@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server: {
+    port: 3001
+  },
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx']
   },

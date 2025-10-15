@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Briefcase, Code, Edit, X, ChevronDown, CheckCircle, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Briefcase, Code, Edit, X, ChevronDown, MessageSquare, CheckCircle, FileText, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Reusable FilterDropdown component
@@ -66,7 +66,14 @@ function ProjectApproval() {
       description: 'A web-based platform for online shopping with secure payment gateways.',
       technology: 'MERN Stack',
       status: 'In Progress',
-      assignedGroup: 'Alpha Team'
+      assignedGroup: 'Alpha Team',
+      proposalPdf: 'https://example.com/proposals/ecommerce-platform.pdf',
+      members: [
+        { id: 's1', name: 'John Doe', role: 'Team Lead' },
+        { id: 's2', name: 'Jane Smith', role: 'Developer' },
+        { id: 's3', name: 'Bob Johnson', role: 'Designer' },
+        { id: 's4', name: 'Alice Brown', role: 'Tester' }
+      ]
     },
     {
       id: 'p2',
@@ -74,7 +81,13 @@ function ProjectApproval() {
       description: 'A messaging app with fast and secure communication features.',
       technology: 'Flutter',
       status: 'In Progress',
-      assignedGroup: 'Beta Squad'
+      assignedGroup: 'Beta Squad',
+      proposalPdf: 'https://example.com/proposals/chat-app.pdf',
+      members: [
+        { id: 's5', name: 'Charlie Wilson', role: 'Team Lead' },
+        { id: 's6', name: 'Diana Prince', role: 'Developer' },
+        { id: 's7', name: 'Eve Adams', role: 'Designer' }
+      ]
     },
     {
       id: 'p3',
@@ -82,7 +95,14 @@ function ProjectApproval() {
       description: 'A platform for students to access courses and track progress.',
       technology: 'PHP / MySQL',
       status: 'Completed',
-      assignedGroup: 'Project Phoenix'
+      assignedGroup: 'Project Phoenix',
+      proposalPdf: 'https://example.com/proposals/learning-system.pdf',
+      members: [
+        { id: 's8', name: 'Frank Miller', role: 'Team Lead' },
+        { id: 's9', name: 'Grace Lee', role: 'Developer' },
+        { id: 's10', name: 'Henry Ford', role: 'Designer' },
+        { id: 's11', name: 'Ivy Chen', role: 'Tester' }
+      ]
     },
     {
       id: 'p4',
@@ -90,32 +110,17 @@ function ProjectApproval() {
       description: 'A system providing personalized recommendations based on user behavior.',
       technology: 'Python / ML',
       status: 'Not Started',
-      assignedGroup: 'Quantum Coders'
+      assignedGroup: 'Quantum Coders',
+      proposalPdf: 'https://example.com/proposals/ai-recommendation.pdf',
+      members: [
+        { id: 's12', name: 'Jack Ryan', role: 'Team Lead' },
+        { id: 's13', name: 'Kate Bishop', role: 'Developer' },
+        { id: 's14', name: 'Liam Neeson', role: 'Designer' }
+      ]
     }
   ]);
 
-  // Mock evaluation parameters
-  const [evaluationParameters] = useState([
-    { id: 'param1', name: 'Proposal Quality', description: 'Clarity and feasibility of the project proposal' },
-    { id: 'param2', name: 'Code Quality', description: 'Cleanliness, efficiency, and documentation of code' },
-    { id: 'param3', name: 'Presentation', description: 'Effectiveness of the project presentation' }
-  ]);
 
-  // Mock project evaluations
-  const [projectEvaluations, setProjectEvaluations] = useState([
-    { projectId: 'p1', parameterId: 'param1', isCompleted: true },
-    { projectId: 'p1', parameterId: 'param2', isCompleted: false },
-    { projectId: 'p1', parameterId: 'param3', isCompleted: false },
-    { projectId: 'p2', parameterId: 'param1', isCompleted: false },
-    { projectId: 'p2', parameterId: 'param2', isCompleted: false },
-    { projectId: 'p2', parameterId: 'param3', isCompleted: false },
-    { projectId: 'p3', parameterId: 'param1', isCompleted: true },
-    { projectId: 'p3', parameterId: 'param2', isCompleted: true },
-    { projectId: 'p3', parameterId: 'param3', isCompleted: true },
-    { projectId: 'p4', parameterId: 'param1', isCompleted: false },
-    { projectId: 'p4', parameterId: 'param2', isCompleted: false },
-    { projectId: 'p4', parameterId: 'param3', isCompleted: false }
-  ]);
 
   // State for UI
   const [selectedProject, setSelectedProject] = useState(null);
@@ -124,9 +129,12 @@ function ProjectApproval() {
   const [successMessage, setSuccessMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [techFilter, setTechFilter] = useState('All');
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [projectToReject, setProjectToReject] = useState(null);
 
   // Filter options
-  const statusOptions = ['All', 'Not Started', 'In Progress', 'Completed'];
+  const statusOptions = ['All', 'Not Started', 'In Progress', 'Completed', 'Approved', 'Rejected'];
   const techOptions = ['All', ...new Set(projects.map(project => project.technology))];
 
   // Available technologies for editing
@@ -152,54 +160,7 @@ function ProjectApproval() {
     return matchesStatus && matchesTech;
   });
 
-  // Calculate progress based on completed evaluations
-  const calculateProgress = (projectId) => {
-    const projectEvals = projectEvaluations.filter(evaluation => evaluation.projectId === projectId);
-    const completedCount = projectEvals.filter(evaluation => evaluation.isCompleted).length;
-    return projectEvals.length > 0 ? Math.round((completedCount / projectEvals.length) * 100) : 0;
-  };
 
-  // Get evaluation icons for progress display
-  const getEvaluationIcons = (projectId) => {
-    const projectEvals = projectEvaluations.filter(evaluation => evaluation.projectId === projectId);
-    const progress = calculateProgress(projectId);
-    return (
-      <div className="flex items-center gap-2">
-        {evaluationParameters.map(param => {
-          const isCompleted = projectEvals.find(e => e.parameterId === param.id)?.isCompleted || false;
-          return (
-            <CheckCircle
-              key={param.id}
-              size={20}
-              className={isCompleted ? 'text-teal-400' : 'text-white/50'}
-              title={isCompleted ? `${param.name} completed` : `${param.name} not completed`}
-            />
-          );
-        })}
-        <span className="text-white/80 text-sm">({progress}%)</span>
-      </div>
-    );
-  };
-
-  // Handle evaluation toggle
-  const handleEvaluationToggle = (projectId, parameterId) => {
-    setProjectEvaluations(prev =>
-      prev.map(evaluation =>
-        evaluation.projectId === projectId && evaluation.parameterId === parameterId
-          ? { ...evaluation, isCompleted: !evaluation.isCompleted }
-          : evaluation
-      )
-    );
-    setSuccessMessage('Evaluation updated successfully!');
-    setTimeout(() => setSuccessMessage(''), 3000);
-  };
-
-  // Get completed parameters count for a project
-  const getCompletedParametersCount = (projectId) => {
-    const projectEvals = projectEvaluations.filter(evaluation => evaluation.projectId === projectId);
-    const completedCount = projectEvals.filter(evaluation => evaluation.isCompleted).length;
-    return `${completedCount}/${projectEvals.length}`;
-  };
 
   // Handle back navigation
   const handleBack = () => {
@@ -258,6 +219,37 @@ function ProjectApproval() {
     navigate('/guide/feedback', { state: { project } });
   };
 
+  // Handle approve project
+  const handleApproveProject = (project) => {
+    setProjects(projects.map(p => (p.id === project.id ? { ...p, status: 'Approved' } : p)));
+    if (selectedProject && selectedProject.id === project.id) {
+      setSelectedProject({ ...selectedProject, status: 'Approved' });
+    }
+    setSuccessMessage(`Project "${project.title}" has been approved!`);
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // Handle reject project - open modal
+  const handleRejectProject = (project) => {
+    setProjectToReject(project);
+    setShowRejectModal(true);
+  };
+
+  // Handle confirm reject
+  const handleConfirmReject = () => {
+    if (projectToReject) {
+      setProjects(projects.map(p => (p.id === projectToReject.id ? { ...p, status: 'Rejected', rejectionReason } : p)));
+      if (selectedProject && selectedProject.id === projectToReject.id) {
+        setSelectedProject({ ...selectedProject, status: 'Rejected', rejectionReason });
+      }
+      setSuccessMessage(`Project "${projectToReject.title}" has been rejected!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      setShowRejectModal(false);
+      setRejectionReason('');
+      setProjectToReject(null);
+    }
+  };
+
   // Render detailed view
   const renderDetailsView = () => (
     <div className="space-y-6">
@@ -297,48 +289,72 @@ function ProjectApproval() {
             <p className="font-semibold">Status:</p>
             <span className="ml-2">{selectedProject.status}</span>
           </div>
-          <div className="flex items-center">
-            <span className="text-white text-lg mr-3">📈</span>
-            <p className="font-semibold">Progress:</p>
-            <div className="ml-2">
-              {getEvaluationIcons(selectedProject.id)}
+
+          {selectedProject.status === 'Rejected' && selectedProject.rejectionReason && (
+            <div>
+              <p className="font-semibold mb-1">Rejection Reason:</p>
+              <p className="text-lg bg-red-500/20 p-3 rounded-lg border border-red-500/30">{selectedProject.rejectionReason}</p>
             </div>
-          </div>
+          )}
+
           <div>
             <p className="font-semibold mb-1">Description:</p>
             <p className="text-lg">{selectedProject.description}</p>
           </div>
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
-            <CheckCircle size={20} className="mr-3 text-white" /> Project Evaluations
-          </h2>
-          {evaluationParameters.length > 0 ? (
-            <div className="space-y-4">
-              {evaluationParameters.map(param => (
-                <div key={param.id} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={projectEvaluations.find(
-                        evaluation => evaluation.projectId === selectedProject.id && evaluation.parameterId === param.id
-                      )?.isCompleted || false}
-                      onChange={() => handleEvaluationToggle(selectedProject.id, param.id)}
-                      className="h-5 w-5 text-teal-400 focus:ring-teal-400 border-white/20 bg-white/10 rounded"
-                    />
-                    <div className="ml-3">
-                      <p className="text-lg font-semibold text-white">{param.name}</p>
-                      <p className="text-sm text-white/80">{param.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+          {selectedProject.proposalPdf && (
+            <div>
+              <p className="font-semibold mb-2">Project Proposal:</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => window.open(selectedProject.proposalPdf, '_blank')}
+                  className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+                >
+                  <FileText size={18} className="mr-2" /> View PDF
+                </button>
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = selectedProject.proposalPdf;
+                    link.download = `${selectedProject.title.replace(/\s+/g, '_')}_proposal.pdf`;
+                    link.click();
+                  }}
+                  className="flex items-center bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+                >
+                  <Download size={18} className="mr-2" /> Download PDF
+                </button>
+              </div>
             </div>
-          ) : (
-            <p className="text-white/70">No evaluation parameters defined.</p>
+          )}
+
+          {selectedProject.members && selectedProject.members.length >= 3 && selectedProject.members.length <= 4 && (
+            <div>
+              <p className="font-semibold mb-2">Team Members:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {selectedProject.members.map((member) => (
+                  <div key={member.id} className="bg-white/10 p-3 rounded-lg border border-white/20">
+                    <p className="font-medium text-white">{member.name}</p>
+                    <p className="text-sm text-white/70">{member.role}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-        <div className="flex justify-end">
+
+        <div className="flex justify-end gap-4">
+          <button
+            onClick={() => handleRejectProject(selectedProject)}
+            className="flex items-center bg-gradient-to-r from-red-500 to-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+          >
+            <X size={18} className="mr-2" /> Reject
+          </button>
+          <button
+            onClick={() => handleApproveProject(selectedProject)}
+            className="flex items-center bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
+          >
+            <CheckCircle size={18} className="mr-2" /> Approve
+          </button>
           <button
             onClick={() => openEditModal(selectedProject)}
             className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition border border-white/30"
@@ -395,18 +411,7 @@ function ProjectApproval() {
                     <p className="font-semibold">Status:</p>
                     <span className="ml-2">{project.status}</span>
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-white text-lg mr-3">📈</span>
-                    <p className="font-semibold">Progress:</p>
-                    <div className="ml-2">
-                      {getEvaluationIcons(project.id)}
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle size={20} className="mr-3 text-white" />
-                    <p className="font-semibold">Evaluations:</p>
-                    <span className="ml-2">{getCompletedParametersCount(project.id)}</span>
-                  </div>
+
                 </div>
               </div>
             </div>
@@ -480,13 +485,7 @@ function ProjectApproval() {
                     <p className="font-semibold">Status:</p>
                     <span className="ml-2">{editProject.status}</span>
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-white text-base mr-3">📈</span>
-                    <p className="font-semibold">Progress:</p>
-                    <div className="ml-2">
-                      {getEvaluationIcons(editProject.id)}
-                    </div>
-                  </div>
+
                   <div>
                     <p className="font-semibold mb-1">Description:</p>
                     <p className="text-sm bg-white/5 p-2 rounded">{editProject.description}</p>
@@ -558,6 +557,62 @@ function ProjectApproval() {
                   className="flex items-center bg-gradient-to-r from-teal-500 to-cyan-400 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 border border-white/30"
                 >
                   Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reject Modal */}
+        {showRejectModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white/20 backdrop-blur-md p-8 rounded-3xl shadow-glow border border-white/30 w-full max-w-md relative">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                  setProjectToReject(null);
+                }}
+                className="absolute top-4 right-4 text-white hover:text-teal-400 transition duration-200"
+              >
+                <X size={24} className="text-white" />
+              </button>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center">Reject Project</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="rejectionReason" className="block text-lg font-semibold text-white mb-2">
+                    Reason for Rejection
+                  </label>
+                  <textarea
+                    id="rejectionReason"
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400 transition duration-200"
+                    placeholder="Provide detailed reason for rejection..."
+                    rows="4"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4 mt-6">
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectionReason('');
+                    setProjectToReject(null);
+                  }}
+                  className="flex items-center bg-gray-600/80 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition duration-200 border border-white/30"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmReject}
+                  disabled={!rejectionReason.trim()}
+                  className="flex items-center bg-gradient-to-r from-red-500 to-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 hover:scale-105 transition duration-200 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reject Project
                 </button>
               </div>
             </div>

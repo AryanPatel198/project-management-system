@@ -10,6 +10,8 @@ export default function Profile() {
   const [profile, setProfile] = useState({
     name: '',
     email: '',
+    department: '',
+    designation: '',
     expertise: '',
   });
 
@@ -30,6 +32,8 @@ export default function Profile() {
         ...p,
         name: user.name || '',
         email: user.email || '',
+        department: user.department || '',
+        designation: user.designation || '',
         expertise: user.expertise || '',
       }));
     }
@@ -164,7 +168,26 @@ export default function Profile() {
                   />
                 </div>
               </div>
-
+              <div>
+                <label className="block text-lg font-semibold text-white mb-2">Department</label>
+                <input
+                  type="text"
+                  value={profile.department}
+                  onChange={(e) => setProfile((p) => ({ ...p, department: e.target.value }))}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Enter your department"
+                />
+              </div>
+              <div>
+                <label className="block text-lg font-semibold text-white mb-2">Designation</label>
+                <input
+                  type="text"
+                  value={profile.designation}
+                  onChange={(e) => setProfile((p) => ({ ...p, designation: e.target.value }))}
+                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Enter your designation"
+                />
+              </div>
               <div>
                 <label className="block text-lg font-semibold text-white mb-2">Expertise</label>
                 <input

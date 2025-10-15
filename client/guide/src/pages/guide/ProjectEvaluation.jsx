@@ -12,8 +12,6 @@ export default function ProjectEvaluation() {
     documentationScore: 0,
     innovationScore: 0,
     overallScore: 0,
-    feedback: '',
-    recommendations: '',
     status: 'pending'
   });
 
@@ -118,8 +116,6 @@ export default function ProjectEvaluation() {
         documentationScore: 0,
         innovationScore: 0,
         overallScore: 0,
-        feedback: '',
-        recommendations: '',
         status: 'completed'
       });
     }
@@ -310,30 +306,7 @@ export default function ProjectEvaluation() {
                   </div>
                 </div>
 
-                {/* Feedback & Recommendations */}
-                <div className="mb-6 space-y-4">
-                  <div>
-                    <label className="block text-lg font-semibold text-white mb-2">Detailed Feedback</label>
-                    <textarea
-                      value={evaluationForm.feedback}
-                      onChange={(e) => setEvaluationForm(prev => ({ ...prev, feedback: e.target.value }))}
-                      placeholder="Provide detailed feedback on the project..."
-                      className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                      rows="4"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-lg font-semibold text-white mb-2">Recommendations</label>
-                    <textarea
-                      value={evaluationForm.recommendations}
-                      onChange={(e) => setEvaluationForm(prev => ({ ...prev, recommendations: e.target.value }))}
-                      placeholder="Suggest improvements and next steps..."
-                      className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                      rows="3"
-                    />
-                  </div>
-                </div>
+
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
