@@ -221,4 +221,200 @@ export const projectAPI = {
   }),
 };
 
+// Guide Panel API - Merged from guidePanelAPI.js
+// Note: Based on backend routes, some endpoints may not be implemented yet
+export const guidePanelAPI = {
+  // Dashboard - Fetch groups and announcements
+  getDashboard: async () => {
+    try {
+      const [groupsData, announcementsData] = await Promise.all([
+        guidePanelAPI.getGroups().catch(() => []),
+        guidePanelAPI.getCommunication({ type: 'announcement' }).catch(() => [])
+      ]);
+
+      return {
+        groups: groupsData || [],
+        announcements: announcementsData || [],
+        profile: null
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      return {
+        groups: [],
+        announcements: [],
+        profile: null
+      };
+    }
+  },
+
+  // Group Management - Using actual backend endpoints
+  getGroups: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/guide-panel/groups?${queryString}`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} groupId - The ID of the group
+   * @returns {Promise<object>} Group details
+   */
+  getGroupDetails: async (groupId) => {
+    const response = await apiRequest(`/guide-panel/groups/${groupId}`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} groupId - The ID of the group
+   * @param {object} groupData - The group data to update
+   * @returns {Promise<object>} Updated group
+   */
+  updateGroup: async (groupId, groupData) => {
+    const response = await apiRequest(`/guide-panel/groups/${groupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(groupData),
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} groupId - The ID of the group
+   * @param {object} groupData - The group details to update
+   * @returns {Promise<object>} Updated group details
+   */
+  updateGroupDetails: async (groupId, groupData) => {
+    const response = await apiRequest(`/guide-panel/groups/${groupId}/details`, {
+      method: 'PUT',
+      body: JSON.stringify(groupData),
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} groupId
+   */
+  getAvailableStudentsForGroup: async (groupId) => {
+    const response = await apiRequest(`/guide-panel/groups/${groupId}/available-students`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  // Student Management
+  getStudents: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/guide-panel/students?${queryString}`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} enrollment - Enrollment number to search
+   * @returns {Promise<object[]>} Search results
+   */
+  searchStudents: async (enrollment) => {
+    const response = await apiRequest(`/guide-panel/students/search?enrollment=${encodeURIComponent(enrollment)}`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  /**
+   * @param {string} studentId - The ID of the student
+   * @returns {Promise<object>} Student details
+   */
+  getStudentDetails: async (studentId) => {
+    const response = await apiRequest(`/guide-panel/students/${studentId}`, {
+      method: 'GET',
+    });
+    return response.data;
+  },
+
+  // Profile Management - Using authAPI endpoints
+  getProfile: async () => {
+    return await authAPI.getGuideProfile();
+  },
+
+  /**
+   * @param {object} profileData - Profile data to update
+   * @returns {Promise<object>} Updated profile
+   */
+  updateProfile: async (profileData) => {
+    return await authAPI.updateGuideProfile(profileData);
+  },
+
+  // Note: The following endpoints are not yet implemented in the backend
+  // They are kept for future implementation
+
+  // Project Management (Not implemented in backend yet)
+  getProjects: async (params = {}) => {
+    console.warn('getProjects endpoint not implemented in backend yet');
+    return [];
+  },
+
+  getProjectDetails: async (projectId) => {
+    console.warn('getProjectDetails endpoint not implemented in backend yet');
+    return null;
+  },
+
+  evaluateProject: async (projectId, evaluationData) => {
+    console.warn('evaluateProject endpoint not implemented in backend yet');
+    return null;
+  },
+
+  // Project Approval (Not implemented in backend yet)
+  getProjectApprovals: async (params = {}) => {
+    console.warn('getProjectApprovals endpoint not implemented in backend yet');
+    return [];
+  },
+
+  updateProjectApproval: async (projectId, approvalData) => {
+    console.warn('updateProjectApproval endpoint not implemented in backend yet');
+    return null;
+  },
+
+  // Feedback System (Not implemented in backend yet)
+  getFeedback: async (params = {}) => {
+    console.warn('getFeedback endpoint not implemented in backend yet');
+    return [];
+  },
+
+  submitFeedback: async (feedbackData) => {
+    console.warn('submitFeedback endpoint not implemented in backend yet');
+    return null;
+  },
+
+  // Seminar Schedule (Not implemented in backend yet)
+  getSeminarSchedule: async (params = {}) => {
+    console.warn('getSeminarSchedule endpoint not implemented in backend yet');
+    return [];
+  },
+
+  scheduleSeminar: async (seminarData) => {
+    console.warn('scheduleSeminar endpoint not implemented in backend yet');
+    return null;
+  },
+
+  // Communication (Not implemented in backend yet)
+  getCommunication: async (params = {}) => {
+    console.warn('getCommunication endpoint not implemented in backend yet');
+    return [];
+  },
+
+  sendMessage: async (messageData) => {
+    console.warn('sendMessage endpoint not implemented in backend yet');
+    return null;
+  },
+
+  // Reports & Analytics (Not implemented in backend yet)
+  getReports: async (type, params = {}) => {
+    console.warn('getReports endpoint not implemented in backend yet');
+    return null;
+  },
+};
+
 export default apiRequest;

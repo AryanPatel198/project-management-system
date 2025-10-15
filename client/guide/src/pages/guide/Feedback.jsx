@@ -1,42 +1,14 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, MessageSquare, Search, Star, User, Users, Trash2 } from 'lucide-react';
+import { guidePanelAPI } from '../../services/api';
 
 export default function Feedback() {
   const navigate = useNavigate();
-  const [feedbacks, setFeedbacks] = useState([
-    {
-      id: 'f1',
-      groupName: 'Alpha Team',
-      project: 'E-commerce Platform',
-      feedback: 'Excellent work on the authentication module. The implementation is clean and follows best practices.',
-      rating: 5,
-      status: 'Submitted',
-      date: '2024-01-20',
-      response: 'Thank you for the feedback! We will work on improving the UI components.'
-    },
-    {
-      id: 'f2',
-      groupName: 'Beta Squad',
-      project: 'Real-time Chat App',
-      feedback: 'Good progress on the backend. Consider improving error handling and user validation.',
-      rating: 4,
-      status: 'Pending Response',
-      date: '2024-01-19',
-      response: null
-    },
-    {
-      id: 'f3',
-      groupName: 'Project Phoenix',
-      project: 'AI Recommendation System',
-      feedback: 'Outstanding work! The algorithm implementation is innovative and well-documented.',
-      rating: 5,
-      status: 'Completed',
-      date: '2024-01-18',
-      response: 'We appreciate your guidance throughout the project!'
-    }
-  ]);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -60,6 +32,26 @@ export default function Feedback() {
     { name: 'Innovation Hub', project: 'Smart City Dashboard' }
   ];
 
+  // Load feedback data on component mount
+  useEffect(() => {
+    const loadFeedbacks = async () => {
+      try {
+        setLoading(true);
+        const feedbackData = await guidePanelAPI.getFeedback();
+        setFeedbacks(feedbackData || []);
+      } catch (err) {
+        console.error('Error loading feedbacks:', err);
+        setError('Failed to load feedback data');
+        // Fallback to empty array if API fails
+        setFeedbacks([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeedbacks();
+  }, []);
+
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this feedback? This action cannot be undone.')) {
       setFeedbacks(prevFeedbacks => prevFeedbacks.filter(fb => fb.id !== id));
@@ -74,37 +66,39 @@ export default function Feedback() {
     return matchesSearch && matchesStatus && matchesRating;
   });
 
-  const submitFeedback = () => {
+  const submitFeedback = async () => {
     if (newFeedback.groupName && newFeedback.feedback) {
-      const newFeedbackItem = {
-        id: selectedGroup || `f${Date.now()}`,
-        ...newFeedback,
-        status: 'Submitted',
-        date: new Date().toISOString().split('T')[0],
-        response: null
-      };
+      try {
+        setLoading(true);
+        const feedbackData = {
+          groupName: newFeedback.groupName,
+          project: newFeedback.project,
+          feedback: newFeedback.feedback,
+          rating: newFeedback.rating,
+          recommendations: newFeedback.recommendations || ''
+        };
 
-      if (selectedGroup) {
-        // Update existing feedback
-        setFeedbacks(prevFeedbacks =>
-          prevFeedbacks.map(fb =>
-            fb.id === selectedGroup ? { ...newFeedbackItem, id: selectedGroup } : fb
-          )
-        );
-      } else {
-        // Add new feedback
-        setFeedbacks(prevFeedbacks => [...prevFeedbacks, newFeedbackItem]);
+        await guidePanelAPI.submitFeedback(feedbackData);
+        
+        // Reload feedbacks after successful submission
+        const updatedFeedbacks = await guidePanelAPI.getFeedback();
+        setFeedbacks(updatedFeedbacks || []);
+
+        setNewFeedback({
+          groupName: '',
+          project: '',
+          feedback: '',
+          rating: 5,
+          recommendations: ''
+        });
+        setShowFeedbackModal(false);
+        setSelectedGroup(null);
+      } catch (err) {
+        console.error('Error submitting feedback:', err);
+        setError('Failed to submit feedback');
+      } finally {
+        setLoading(false);
       }
-
-      setNewFeedback({
-        groupName: '',
-        project: '',
-        feedback: '',
-        rating: 5,
-        recommendations: ''
-      });
-      setShowFeedbackModal(false);
-      setSelectedGroup(null);
     }
   };
 

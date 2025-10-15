@@ -11,6 +11,8 @@ function GuideRegister() {
     name: '',
     email: '',
     password: '',
+    department: '',
+    designation: '',
     expertise: ''
   });
   const [loading, setLoading] = useState(false);
@@ -39,18 +41,13 @@ function GuideRegister() {
 
     try {
       const response = await authAPI.guideRegister(formData);
-
-      // Check status
-      if (response.data.status === 'approved') {
-        // Store token and user data
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.data));
-
-        console.log('Guide registration successful, navigating to /guide/dashboard');
-        navigate('/guide/dashboard');
-      } else {
-        setError('Registration successful. Your account is pending admin approval. You will be notified once approved.');
-      }
+      
+      // Store token and user data
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.data));
+      
+      console.log('Guide registration successful, navigating to /guide/dashboard');
+      navigate('/guide/dashboard');
     } catch (error) {
       setError(error.message || 'Registration failed. Please try again.');
       console.error('Registration error:', error);
@@ -94,7 +91,37 @@ function GuideRegister() {
               placeholder="Enter your email address"
               className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300"
             />
-
+            <div>
+              <label className="block text-white/80 text-sm mb-2">Department</label>
+              <select
+                id="department"
+                value={formData.department}
+                onChange={handleInputChange}
+                className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300"
+              >
+                <option value="">Select Department</option>
+                <option value="Computer Engineering">Computer Engineering</option>
+                <option value="IT Engineering">IT Engineering</option>
+                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                <option value="Civil Engineering">Civil Engineering</option>
+                <option value="Electrical Engineering">Electrical Engineering</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-white/80 text-sm mb-2">Designation</label>
+              <select
+                id="designation"
+                value={formData.designation}
+                onChange={handleInputChange}
+                className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition-all duration-300"
+              >
+                <option value="">Select Designation</option>
+                <option value="Professor">Professor</option>
+                <option value="Associate Professor">Associate Professor</option>
+                <option value="Assistant Professor">Assistant Professor</option>
+                <option value="Lecturer">Lecturer</option>
+              </select>
+            </div>
             <div>
               <label className="block text-white/80 text-sm mb-2">Expertise</label>
               <select

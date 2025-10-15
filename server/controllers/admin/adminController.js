@@ -526,8 +526,9 @@ export const getGroupById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // 💡 MODIFICATION HERE: Add 'phone' to the selected fields for the 'guide' population.
     const group = await Group.findById(id)
-      .populate("guide", "name email expertise") // fetch guide details
+      .populate("guide", "name email expertise phone") // fetch guide details including phone
       .populate("division", "course semester year status") // fetch division details
       .populate("students", "name enrollmentNumber") // fetch student list
       .exec();
@@ -544,7 +545,9 @@ export const getGroupById = async (req, res) => {
       _id: s._id,
       name: s.name,
       enrollment: s.enrollmentNumber,
-      className: `${group.division?.course || ""} ${group.division?.semester || ""}`.trim(),
+      className: `${group.division?.course || ""} ${
+        group.division?.semester || ""
+      }`.trim(),
     }));
 
     const responseData = {
@@ -607,10 +610,7 @@ export const getStudentsByGroup = async (req, res) => {
 
     // Find the group and populate students
     const group = await Group.findById(id)
-      .populate(
-        "students",
-        "name enrollmentNumber division isRegistered"
-      )
+      .populate("students", "name enrollmentNumber division isRegistered")
       .populate("division", "course semester year")
       .exec();
 
@@ -2308,21 +2308,26 @@ export const getAllStudents = async (req, res) => {
     // Build filter dynamically
     const filter = {};
     if (division) filter.division = division;
-    if (isRegistered !== undefined) filter.isRegistered = isRegistered === 'true';
-    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (isRegistered !== undefined)
+      filter.isRegistered = isRegistered === "true";
+    if (isActive !== undefined) filter.isActive = isActive === "true";
 
     let students = await Student.find(filter)
       .populate("division", "course semester year")
-      .select("name enrollmentNumber email phone division isRegistered")
+    .populate("group", "name projectTitle")
+      .select(
+        "name enrollmentNumber email phone division group isRegistered isActive"
+      )
       .exec();
 
     // Client-side search if provided (since search is simple)
     if (search) {
       const searchLower = search.toLowerCase();
-      students = students.filter(student =>
-        student.name?.toLowerCase().includes(searchLower) ||
-        student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower)
+      students = students.filter(
+        (student) =>
+          student.name?.toLowerCase().includes(searchLower) ||
+          student.enrollmentNumber?.toLowerCase().includes(searchLower) ||
+          student.email?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -2502,5 +2507,3 @@ export const updateStudent = async (req, res) => {
     });
   }
 };
-
-

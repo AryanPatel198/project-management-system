@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Users, User, BookOpen, Code, Hash, Edit, X, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { guidePanelAPI } from '../../services/guidePanelAPI';
+import { guidePanelAPI } from '../../services/api';
 
 // Mock Data for Guide's Groups
 const guideGroups = [
@@ -63,6 +63,9 @@ function GroupManagement() {
           id: g.id,
           name: g.groupName || g.name || 'Group',
           projectTitle: g.projectTitle || '',
+          projectDescription: g.description || '',
+          projectTechnology: g.technology || '',
+          course: g.course || '',
           year: g.year || new Date().getFullYear(),
           members: (g.members || []).map(m => ({
             _id: m.id,
@@ -95,6 +98,7 @@ function GroupManagement() {
         projectTitle: details.projectTitle || group.projectTitle,
         projectDescription: details.description || '',
         projectTechnology: details.technology || '',
+        course: details.course || group.course || '',
         year: details.year || group.year,
         members: (details.members || []).map(m => ({
           _id: m.id,
@@ -250,7 +254,7 @@ function GroupManagement() {
               <div className="flex items-center">
                 <Users size={20} className="mr-3 text-white" />
                 <p className="font-semibold">Course:</p>
-                <span className="ml-2">{selectedGroup.members[0]?.className}</span>
+                <span className="ml-2">{selectedGroup.course || 'N/A'}</span>
               </div>
               <div className="flex items-center">
                 <span className="text-white text-lg mr-3">🗓️</span>
@@ -280,8 +284,7 @@ function GroupManagement() {
                       <span className="font-semibold text-white">{member.name}</span>
                       <div className="text-white/70 text-sm flex items-center">
                         <Hash size={14} className="mr-1" />
-                        <span>{member.enrollment}</span>
-                        <span className="ml-2">{member.className}</span>
+                        <span>{member.enrollmentNumber || '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -393,7 +396,7 @@ function GroupManagement() {
                     <label className="block text-white/80 mb-2">Course</label>
                     <input
                       type="text"
-                      value={editedGroup.members[0]?.className || 'BCA 6'}
+                      value={editedGroup.course || ''}
                       onChange={(e) => handleFormChange('course', e.target.value)}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50"
                     />
@@ -413,7 +416,7 @@ function GroupManagement() {
                     <label className="block text-white/80 mb-2">Technology</label>
                     <input
                       type="text"
-                      value={editedGroup.projectTechnology}
+                      value={editedGroup.projectTechnology || editedGroup.technology || ''}
                       onChange={(e) => handleFormChange('projectTechnology', e.target.value)}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50"
                     />

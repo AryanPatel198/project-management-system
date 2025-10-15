@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import Guide from "../models/guide.js";
 import Group from "../models/group.js";
+import Student from "../models/student.js";
 import GuideAnnouncement from "../models/guideAnnouncement.js";
 // import CourseAnnouncement from "../models/courseAnnouncement.js";
 // import ExamSchedule from "../models/examSchedule.js";
@@ -12,20 +13,10 @@ import GuideAnnouncement from "../models/guideAnnouncement.js";
  */
 export const registerGuide = async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      password,
-      expertise,
-      phone,
-    } = req.body;
+    const { name, email, password, expertise, phone } = req.body;
 
     // 1️⃣ Validate input
-    if (
-      !name ||
-      !email ||
-      !password
-    ) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
         message: "Please fill all required fields.",
@@ -34,7 +25,7 @@ export const registerGuide = async (req, res) => {
 
     // 2️⃣ Check for duplicate email
     const existingGuide = await Guide.findOne({
-      email
+      email,
     });
     if (existingGuide) {
       return res.status(400).json({
@@ -500,6 +491,11 @@ export const getGuideGroups = async (req, res) => {
       groupName: g.name,
       projectTitle: g.projectTitle || "",
       description: g.projectDescription || "",
+      technology: g.projectTechnology || "",
+      year: g.year,
+      course:
+        (Array.isArray(g.membersSnapshot) && g.membersSnapshot[0]?.divisionCourse) ||
+        null,
       maxMembers: g.membersSnapshot?.length || 0,
       currentMembers: (g.students || []).length,
       status: g.status,
@@ -509,6 +505,7 @@ export const getGuideGroups = async (req, res) => {
         id: s._id,
         name: s.name,
         email: s.email,
+        enrollmentNumber: s.enrollmentNumber,
       })),
     }));
 
@@ -593,6 +590,11 @@ export const getGroupByIdForGuide = async (req, res) => {
       groupName: group.name,
       projectTitle: group.projectTitle || "",
       description: group.projectDescription || "",
+      technology: group.projectTechnology || "",
+      year: group.year,
+      course:
+        (Array.isArray(group.membersSnapshot) && group.membersSnapshot[0]?.divisionCourse) ||
+        null,
       maxMembers: group.membersSnapshot?.length || 0,
       currentMembers: (group.students || []).length,
       status: group.status,
@@ -602,6 +604,7 @@ export const getGroupByIdForGuide = async (req, res) => {
         id: s._id,
         name: s.name,
         email: s.email,
+        enrollmentNumber: s.enrollmentNumber,
       })),
     };
 
@@ -683,6 +686,219 @@ export const deleteGroupForGuide = async (req, res) => {
     res.status(200).json({ data: { message: "Group deleted successfully" } });
   } catch (error) {
     console.error("Error deleting group:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// The logic for listing groups and getting a group by ID is already in guideController.js,
+// but the guidePanelRoutes re-used them by setting req.params.id.
+// We'll create wrapper functions here for clarity in the routes file.
+
+/**
+ * GET /api/guide-panel/groups - list groups for current guide
+ */
+export const listGuidePanelGroups = async (req, res) => {
+  try {
+    // Set guide ID from protectGuide middleware into params so getGuideGroups controller can be reused
+    req.params.id = req.guide._id.toString();
+    // This is a re-export/wrapper; in a real app, you might abstract the core logic
+    // into a service or util and call it from both guideController and here.
+    return getGuideGroups(req, res);
+  } catch (error) {
+    console.error("Error listing guide-panel groups:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * GET /api/guide-panel/groups/:groupId - group details for current guide
+ */
+export const getGuidePanelGroupDetails = async (req, res) => {
+  try {
+    // Set guide ID from protectGuide middleware into params so getGroupByIdForGuide controller can be reused
+    req.params.id = req.guide._id.toString();
+    // This is a re-export/wrapper; see note above.
+    return getGroupByIdForGuide(req, res);
+  } catch (error) {
+    console.error("Error getting guide-panel group:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * PUT /api/guide-panel/groups/:groupId/details - update project details and members
+ */
+export const updateGroupDetailsAndMembers = async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const { groupId } = req.params;
+    const {
+      projectTitle,
+      projectDescription,
+      year,
+      technology,
+      members = [], // array of student ids
+    } = req.body || {};
+
+    const group = await Group.findOne({ _id: groupId, guide: guideId });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+
+    // --- START: Corrected Member Update Logic ---
+    if (Array.isArray(members)) {
+      // 1. Member Count Validation
+      if (members.length < 3 || members.length > 4) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Group must have 3-4 members" });
+      }
+
+      // 2. Validate all students exist and fetch their current group status
+      const students = await Student.find({ _id: { $in: members } });
+      if (students.length !== members.length) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid student list" });
+      }
+
+      // 3. **CRITICAL FIX**: Ensure students are not assigned to *another* group.
+      // Filter for students whose 'group' field is set, AND that group ID is NOT the current group ID.
+      const conflicting = students.filter(
+        (s) => s.group && s.group.toString() !== group._id.toString()
+      );
+
+      if (conflicting.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Some students are already assigned to another group",
+        });
+      }
+
+      // 4. Detach current students previously in this group but not in new list
+      await Student.updateMany(
+        { group: group._id, _id: { $nin: members } },
+        { $set: { group: null } }
+      );
+
+      // 5. Attach new/existing students to this group (safe because conflicts were checked)
+      await Student.updateMany(
+        { _id: { $in: members } },
+        { $set: { group: group._id } }
+      );
+
+      group.students = members;
+      // Maintain a simple snapshot for auditing
+      group.membersSnapshot = students.map((s) => ({
+        studentRef: s._id,
+        enrollmentNumber: s.enrollmentNumber,
+        name: s.name,
+      }));
+    }
+    // --- END: Corrected Member Update Logic ---
+
+    // Update Project Details (regardless of member changes)
+    if (projectTitle !== undefined) group.projectTitle = projectTitle;
+    if (projectDescription !== undefined)
+      group.projectDescription = projectDescription;
+    if (technology !== undefined) group.projectTechnology = technology;
+    if (year !== undefined) group.year = year;
+
+    await group.save();
+
+    const populated = await Group.findById(group._id)
+      .populate("students", "name email enrollmentNumber")
+      .lean();
+
+    return res.status(200).json({
+      data: {
+        id: populated._id,
+        groupName: populated.name,
+        projectTitle: populated.projectTitle || "",
+        description: populated.projectDescription || "",
+        technology: populated.projectTechnology || "",
+        year: populated.year,
+        status: populated.status,
+        members: (populated.students || []).map((s) => ({
+          id: s._id,
+          name: s.name,
+          enrollmentNumber: s.enrollmentNumber,
+          email: s.email,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Error updating group details:", error.message);
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * GET /api/guide-panel/students/search?enrollment=123
+ */
+export const searchStudentsByEnrollment = async (req, res) => {
+  try {
+    const { enrollment = "" } = req.query;
+    const regex = new RegExp(`^${String(enrollment).trim()}`, "i");
+    const students = await Student.find({
+      enrollmentNumber: { $regex: regex },
+    })
+      .select("name email enrollmentNumber group")
+      .limit(20)
+      .lean();
+
+    res.status(200).json({
+      data: students.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        email: s.email,
+        enrollmentNumber: s.enrollmentNumber,
+        isAssigned: !!s.group,
+      })),
+    });
+  } catch (error) {
+    console.error("Error searching students:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * GET /api/guide-panel/groups/:groupId/available-students
+ */
+export const getAvailableStudentsForGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const group = await Group.findOne({ _id: groupId, guide: req.guide._id });
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Group not found" });
+    }
+
+    // Available students are those who are unassigned (group: null) OR already in the current group
+    const available = await Student.find({
+      $or: [{ group: null }, { group: groupId }],
+    })
+      .select("name enrollmentNumber email")
+      .limit(100)
+      .lean();
+
+    res.status(200).json({
+      data: available.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        enrollmentNumber: s.enrollmentNumber,
+        email: s.email,
+      })),
+    });
+  } catch (error) {
+    console.error("Error getting available students:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
