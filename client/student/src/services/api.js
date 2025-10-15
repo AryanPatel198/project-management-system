@@ -32,6 +32,44 @@ export const studentPublicAPI = {
   login: (payload) => apiRequest('/student/login', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+export const studentProtectedAPI = {
+  getProfile: () => {
+    const token = localStorage.getItem('studentToken');
+    return apiRequest('/student/profile', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  },
+  getAvailableStudents: () => {
+    const token = localStorage.getItem('studentToken');
+    return apiRequest('/student/available-students', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  },
+  createGroup: (payload) => {
+    const token = localStorage.getItem('studentToken');
+    return apiRequest('/student/create-group', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  },
+  checkGroup: () => {
+    const token = localStorage.getItem('studentToken');
+    return apiRequest('/student/check-group', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  },
+};
+
 export default apiRequest;
-
-

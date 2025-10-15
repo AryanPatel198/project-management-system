@@ -24,7 +24,7 @@ function Login() {
     setLoading(true);
     try {
       const response = await studentPublicAPI.login({ enrollmentNumber: enrollmentNumber.trim(), password });
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('studentToken', response.token);
       navigate('/student/dashboard');
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
