@@ -807,38 +807,48 @@ export const updateGroup = async (req, res) => {
     }
 
     // 3️⃣ Handle adding new students
-    if (Array.isArray(addStudentIds) && addStudentIds.length > 0) {
-      // Prevent duplicates
-      const currentIds = group.students.map((s) => s._id.toString());
-      const uniqueNewIds = addStudentIds.filter((id) => !currentIds.includes(id));
+    // 3️⃣ Handle adding new students
+if (Array.isArray(addStudentIds) && addStudentIds.length > 0) {
+  const currentIds = group.students.map((s) => s._id.toString());
+  const uniqueNewIds = addStudentIds.filter((id) => !currentIds.includes(id));
 
-      // Validate student existence
-      const newStudents = await Student.find({ _id: { $in: uniqueNewIds } })
-        .populate("division", "course semester");
+  const newStudents = await Student.find({ _id: { $in: uniqueNewIds } })
+    .populate("division", "course semester");
 
-      // Limit total to 4 members
-      if (group.students.length + newStudents.length > 4) {
-        return res.status(400).json({
-          success: false,
-          message: "Cannot exceed 4 members in a group",
-        });
-      }
+  const currentCount = group.students.length;
+  const totalAfterAdd = currentCount + newStudents.length;
 
-      // Add to group
-      group.students.push(...newStudents.map((s) => s._id));
-
-      // Add to membersSnapshot
-      group.membersSnapshot.push(
-        ...newStudents.map((s) => ({
-          studentRef: s._id,
-          enrollmentNumber: s.enrollmentNumber,
-          name: s.name,
-          joinedAt: new Date(),
-          divisionCourse: s.division.course,
-          divisionSemester: s.division.semester,
-        }))
-      );
+  // ✅ Default max = 4
+  if (totalAfterAdd > 4) {
+    // allow admin override up to 5
+    if (totalAfterAdd > 5) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cannot exceed 5 members total. (4 normal + 1 admin override)",
+      });
+    } else {
+      console.log("⚠️ Admin override: Adding 5th member to group:", group.name);
     }
+  }
+
+  // Add to group
+  group.students.push(...newStudents.map((s) => s._id));
+
+  // Add to membersSnapshot, marking 5th as override
+  group.membersSnapshot.push(
+    ...newStudents.map((s, idx) => ({
+      studentRef: s._id,
+      enrollmentNumber: s.enrollmentNumber,
+      name: s.name,
+      joinedAt: new Date(),
+      divisionCourse: s.division.course,
+      divisionSemester: s.division.semester,
+      override: totalAfterAdd > 4 ? true : false, // ⚠️ mark as override
+    }))
+  );
+}
+
 
     // 4️⃣ Handle removing a student
 

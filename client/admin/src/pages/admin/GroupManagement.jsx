@@ -98,6 +98,7 @@ function GroupManagement() {
   const [showChangeGuideModal, setShowChangeGuideModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [forceAddEnabled, setForceAddEnabled] = useState(false);
   const [showDeleteStudentModal, setShowDeleteStudentModal] = useState(false);
   const [newGuide, setNewGuide] = useState("");
   const [studentToDelete, setStudentToDelete] = useState(null);
@@ -263,23 +264,27 @@ function GroupManagement() {
     return;
   }
 
-  if (selectedGroup.members.length + selectedStudents.length > 4) {
-    setErrorMessage("Cannot add more than 4 students total.");
-    setTimeout(() => setErrorMessage(""), 3000);
-    return;
-  }
+  const totalAfterAdd = selectedGroup.members.length + selectedStudents.length;
+
+  if (totalAfterAdd > 5 && !forceAddEnabled) {
+  setErrorMessage("Cannot add more than 4 students (enable override to add 5th).");
+  return;
+}
+if (totalAfterAdd > 5) {
+  setErrorMessage("Cannot exceed 5 members total, even with override.");
+  return;
+}
+
 
   try {
     const headers = { Authorization: `Bearer ${adminToken}` };
-
-    // ✅ selectedStudents now contains _id values
     await axios.put(
       `${API_BASE_URL}/admin/update-group/${selectedGroup._id}`,
       { addStudentIds: selectedStudents },
       { headers }
     );
 
-    // Refresh group details
+    // Refresh group data
     const response = await axios.get(
       `${API_BASE_URL}/admin/get-group/${selectedGroup._id}`,
       { headers }
@@ -287,6 +292,7 @@ function GroupManagement() {
     setSelectedGroup(response.data.data);
     setShowAddStudentModal(false);
     setSelectedStudents([]);
+    setForceAddEnabled(false); // reset override after success
 
     setSuccessMessage(`${selectedStudents.length} student(s) added successfully!`);
     setTimeout(() => setSuccessMessage(""), 3000);
@@ -300,6 +306,7 @@ function GroupManagement() {
     console.error("Error adding students:", error);
   }
 };
+
 
 
   const openChangeGuideModal = () => {
@@ -551,18 +558,24 @@ function GroupManagement() {
               Group Members
             </h2>
             <button
-              onClick={handleOpenAddStudentModal}
-              disabled={!hasMembers || selectedGroup.members.length >= 4}
-              className={`flex items-center py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
-                hasMembers && selectedGroup.members.length < 4
-                  ? "bg-gradient-to-r from-accent-teal to-cyan-500 text-white hover:bg-opacity-90 hover:scale-105"
-                  : "bg-gray-600/80 text-white/70 cursor-not-allowed"
-              }`}
-              aria-label="Add student"
-            >
-              <Plus size={20} className="mr-2" /> Add Student
-            </button>
+  onClick={handleOpenAddStudentModal}
+  disabled={selectedGroup.members.length >= 5} // only disable at 5
+  className={`flex items-center py-2 px-4 sm:px-3 rounded-lg font-semibold transition duration-200 shadow-neumorphic border border-white/20 backdrop-blur-sm animate-pulse-once ${
+    selectedGroup.members.length < 5
+      ? "bg-gradient-to-r from-accent-teal to-cyan-500 text-white hover:bg-opacity-90 hover:scale-105"
+      : "bg-gray-600/80 text-white/70 cursor-not-allowed"
+  }`}
+  aria-label="Add student"
+>
+  <Plus size={20} className="mr-2" />
+  {selectedGroup.members.length >= 4
+    ? "Add Student (Admin Override)"
+    : "Add Student"}
+</button>
+
+
           </div>
+          
           <div className="flex flex-col space-y-4">
             {selectedGroup.members.map((member, index) => (
               <div
@@ -667,20 +680,38 @@ function GroupManagement() {
         {showAddStudentModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
             <div className="bg-light-glass backdrop-blur-sm p-8 rounded-2xl shadow-neumorphic border border-white/20 w-full max-w-md relative transform transition-all duration-200 scale-100 hover:scale-102 max-h-[80vh] overflow-y-auto">
-              <button
-                onClick={() => setShowAddStudentModal(false)}
-                className="absolute top-4 right-4 text-white/70 hover:text-white transition duration-200"
-                aria-label="Close modal"
-              >
-                <X size={24} className="animate-icon-pulse" />
-              </button>
+              
               <h2 className="text-2xl font-bold text-white mb-6 text-center tracking-tight">
                 Add Students
               </h2>
+              {/* ⚙️ Admin Override Toggle */}
+<div className="mt-5 flex justify-between items-center border-t border-white/20 pt-3">
+  <p className="text-sm text-white/70">
+    Default limit: <span className="font-semibold text-white">4 members</span>
+  </p>
+  <button
+    onClick={() => setForceAddEnabled((prev) => !prev)}
+    className={`px-3 py-1 rounded text-sm font-semibold transition ${
+      forceAddEnabled
+        ? "bg-red-600 hover:bg-red-700 text-white"
+        : "bg-white/20 hover:bg-white/30 text-white/80"
+    }`}
+  >
+    {forceAddEnabled ? "⚠️ Override Enabled" : "Enable Admin Override"}
+  </button>
+  
+</div>
+
               <p className="text-white/80 text-center mb-6">
-                Select students to add (Max: {4 - selectedGroup.members.length}{" "}
+                Select students to add (Max: { - selectedGroup.members.length}{" "}
                 more)
               </p>
+              
+{selectedGroup.members.length === 4 && (
+  <p className="text-sm text-yellow-400 mt-2">
+    ⚠️ 4 members reached use “Admin Override”to add one more.
+  </p>
+)}
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {availableStudents.length > 0 ? (
   availableStudents.map((student) => (
@@ -694,10 +725,11 @@ function GroupManagement() {
           id={`student-${student._id}`}
           checked={selectedStudents.includes(student._id)}
           disabled={
-            selectedStudents.length >=
-              4 - selectedGroup.members.length &&
-            !selectedStudents.includes(student._id)
-          }
+  !forceAddEnabled &&
+  selectedStudents.length >= 4 - selectedGroup.members.length &&
+  !selectedStudents.includes(student._id)
+}
+
           onChange={() => handleCheckboxChange(student._id)}
           className="mr-4 w-4 h-4 text-accent-teal bg-white/10 border-white/20 rounded focus:ring-accent-teal focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
         />
