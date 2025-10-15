@@ -135,7 +135,7 @@ function Register() {
                   id="division"
                   value={division}
                   onChange={(e) => setDivision(e.target.value)}
-                  className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200 placeholder-white/60"
+                  className="w-full p-3 bg-white/10 text-black rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-accent-teal transition duration-200 placeholder-white/60"
                 >
                   <option value="">Select your Division</option>
                   {divisions.map(d => (
@@ -151,7 +151,7 @@ function Register() {
                 value={enrollmentNumber}
                 onChange={(e) => setEnrollmentNumber(e.target.value)}
                 options={enrollmentOptions}
-                className="w-full p-4 bg-white/10 text-white rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                className="w-full p-4 bg-white/10 text-black rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
               <Input
                 id="password"

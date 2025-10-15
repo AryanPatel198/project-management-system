@@ -1,4 +1,4 @@
-// backend/src/controllers/adminController.js
+// server/controllers/admin/adminController.js
 // import sendEmail from "../../services/emailService.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -192,7 +192,6 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// controllers/admin/adminController.js
 export const getAllGuides = async (req, res) => {
   try {
     const guides = await Guide.find().select("-password -otp -otpExpiry");
@@ -276,8 +275,6 @@ export const createGuide = async (req, res) => {
     });
   }
 };
-
-// controllers/admin/adminController.js
 
 export const updateGuideStatus = async (req, res) => {
   try {
@@ -676,49 +673,55 @@ export const deleteGroup = async (req, res) => {
 export const getAvailableStudentsForGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { course, semester, year } = req.query;
 
-    if (!course || !semester || !year) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing division filters" });
+    // 1️⃣ Find the group with its division populated
+    const group = await Group.findById(id).populate("division");
+    if (!group || !group.division) {
+      return res.status(404).json({
+        success: false,
+        message: "Group or division not found",
+      });
     }
 
-    // Find assigned student IDs in this group
-    const group = await Group.findById(id).select("students");
-    const assignedIds = group ? group.students : [];
+    const { course, semester, year } = group.division;
 
-    // Find unassigned students in the same division
+    // 2️⃣ Find all groups in the same division
+    const groupsInSameDivision = await Group.find({
+      division: group.division._id,
+    }).select("students");
+
+    // 3️⃣ Collect student IDs already assigned
+    const assignedIds = groupsInSameDivision.flatMap((g) =>
+      g.students.map((s) => s.toString())
+    );
+
+    // 4️⃣ Fetch unassigned students from this same division
     const availableStudents = await Student.find({
       _id: { $nin: assignedIds },
-      "division.course": course,
-      "division.semester": Number(semester),
-      "division.year": Number(year),
+      division: group.division._id,
     })
       .populate("division", "course semester year")
-      .select("name enrollmentNumber division")
-      .exec();
+      .select("name enrollmentNumber division");
 
     res.status(200).json({
       success: true,
       count: availableStudents.length,
       data: availableStudents.map((s) => ({
-        enrollmentNumber: s.enrollmentNumber,
+        _id: s._id,
         name: s.name,
-        className: `${s.division.course} ${s.division.semester}`,
+        enrollmentNumber: s.enrollmentNumber,
+        className: `${course} ${semester}`,
       })),
     });
   } catch (err) {
-    console.error(
-      "❌ Error fetching available students for group:",
-      err.message
-    );
+    console.error("❌ Error fetching available students:", err.message);
     res.status(500).json({
       success: false,
       message: "Server error while fetching available students",
     });
   }
 };
+
 
 // GET /api/admin/get-groups (with course, semester, year filters)
 export const getGroups = async (req, res) => {
@@ -782,86 +785,138 @@ export const getGroups = async (req, res) => {
 };
 
 // Fix: PUT /api/admin/update-group/:id (handle guide change and members add/remove properly)
+// ✅ PUT /api/admin/update-group/:id
+// Add or remove students from group, and update membersSnapshot
 export const updateGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { guideId, addStudentIds, removeStudentId } = req.body; // Use IDs for accuracy
+    const { guideId, addStudentIds = [], removeStudentId } = req.body;
 
-    const group = await Group.findById(id).populate(
-      "students",
-      "name enrollmentNumber division"
-    );
+    // 1️⃣ Find the group and populate related data
+    const group = await Group.findById(id)
+      .populate("students", "name enrollmentNumber division")
+      .populate("division", "course semester year");
+
     if (!group) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Group not found" });
+      return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    // Change guide
+    // 2️⃣ Handle guide change
     if (guideId) {
       group.guide = guideId;
     }
 
-    // Add students (if provided; assumes addStudentIds is array of Student _ids)
-    if (addStudentIds && addStudentIds.length > 0) {
-      if (group.students.length + addStudentIds.length > 4) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Cannot exceed 4 members" });
-      }
-      const newStudents = await Student.find({ _id: { $in: addStudentIds } });
-      group.students.push(...addStudentIds);
-      group.membersSnapshot.push(
-        ...newStudents.map((s) => ({
-          studentRef: s._id,
-          enrollmentNumber: s.enrollmentNumber,
-          name: s.name,
-          joinedAt: new Date(),
-          // Store division snapshot for frontend
-          divisionCourse: s.division.course,
-          divisionSemester: s.division.semester,
-        }))
-      );
-    }
+    // 3️⃣ Handle adding new students
+    // 3️⃣ Handle adding new students
+if (Array.isArray(addStudentIds) && addStudentIds.length > 0) {
+  const currentIds = group.students.map((s) => s._id.toString());
+  const uniqueNewIds = addStudentIds.filter((id) => !currentIds.includes(id));
 
-    // Remove student (if provided; removeStudentId is Student _id)
-    if (removeStudentId) {
-      if (group.students.length <= 3) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Minimum 3 members required" });
-      }
-      group.students = group.students.filter(
-        (sId) => sId.toString() !== removeStudentId
-      );
-      group.membersSnapshot = group.membersSnapshot.filter(
-        (ms) => ms.studentRef.toString() !== removeStudentId
-      );
-    }
+  const newStudents = await Student.find({ _id: { $in: uniqueNewIds } })
+    .populate("division", "course semester");
 
+  const currentCount = group.students.length;
+  const totalAfterAdd = currentCount + newStudents.length;
+
+  // ✅ Default max = 4
+  if (totalAfterAdd > 4) {
+    // allow admin override up to 5
+    if (totalAfterAdd > 5) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cannot exceed 5 members total. (4 normal + 1 admin override)",
+      });
+    } else {
+      console.log("⚠️ Admin override: Adding 5th member to group:", group.name);
+    }
+  }
+
+  // Add to group
+  group.students.push(...newStudents.map((s) => s._id));
+
+  // Add to membersSnapshot, marking 5th as override
+  group.membersSnapshot.push(
+    ...newStudents.map((s, idx) => ({
+      studentRef: s._id,
+      enrollmentNumber: s.enrollmentNumber,
+      name: s.name,
+      joinedAt: new Date(),
+      divisionCourse: s.division.course,
+      divisionSemester: s.division.semester,
+      override: totalAfterAdd > 4 ? true : false, // ⚠️ mark as override
+    }))
+  );
+}
+
+
+    // 4️⃣ Handle removing a student
+
+    // 4️⃣ Handle removing a student (handles ObjectId, object, or string)
+if (removeStudentId) {
+  const removeIdStr = removeStudentId.toString();
+  console.log("🧾 Removing student ID:", removeIdStr);
+
+  // 🔸 Normalize IDs before filtering
+  const normalizeId = (id) => {
+    if (!id) return null;
+    if (typeof id === "string") return id;
+    if (id._id) return id._id.toString();
+    return id.toString();
+  };
+
+  // 🔹 Filter from students array
+  const beforeStudents = group.students.length;
+  group.students = group.students.filter(
+    (sid) => normalizeId(sid) !== removeIdStr
+  );
+  console.log("📉 Students reduced:", beforeStudents, "→", group.students.length);
+
+  // 🔹 Filter from membersSnapshot
+  const beforeSnapshot = group.membersSnapshot.length;
+  group.membersSnapshot = group.membersSnapshot.filter(
+    (m) => normalizeId(m.studentRef) !== removeIdStr
+  );
+  console.log("📉 Snapshot reduced:", beforeSnapshot, "→", group.membersSnapshot.length);
+
+  // 🔹 Unlink student record
+  await Student.findByIdAndUpdate(removeStudentId, { group: null });
+}
+
+
+
+    // 5️⃣ Save changes
     await group.save();
     await group.populate("guide", "name email expertise phone");
     await group.populate("students", "name enrollmentNumber division");
 
+    // 6️⃣ Return updated group data
     res.status(200).json({
       success: true,
       message: "Group updated successfully",
       data: {
-        ...group.toObject(),
-        members: group.membersSnapshot.map((ms) => ({
-          name: ms.name,
-          enrollment: ms.enrollmentNumber,
-          className: `${ms.divisionCourse} ${ms.divisionSemester}`,
+        _id: group._id,
+        name: group.name,
+        guide: group.guide,
+        year: group.year,
+        projectTitle: group.projectTitle,
+        members: group.students.map((s) => ({
+          _id: s._id,
+          name: s.name,
+          enrollment: s.enrollmentNumber,
+          className: `${s.division.course} ${s.division.semester}`,
         })),
       },
     });
   } catch (err) {
     console.error("❌ Error updating group:", err.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error while updating group" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating group",
+    });
   }
 };
+
 
 export const updateGroupGuide = async (req, res) => {
   try {
@@ -1073,7 +1128,7 @@ export const getStudentEnrollments = async (req, res) => {
     // Fetch all students (you can filter here if needed later)
     const students = await Student.find(
       {},
-      "enrollmentNumber name division group status"
+      "enrollmentNumber name division group isRegistered"
     ).populate("division", "course semester year");
 
     res.status(200).json({
@@ -1278,7 +1333,7 @@ export const generateEnrollments = async (req, res) => {
         enrollmentNumber,
         name: `Student ${rollStr}`,
         division: division._id,
-        status: "pending",
+        isRegistered: false,
       });
     }
 
@@ -1324,26 +1379,30 @@ export const getEnrollmentsByDivision = async (req, res) => {
 
     const students = await Student.find({ division: id })
       .populate("division", "course semester year status")
-      .select("enrollmentNumber name email phone status createdAt")
+      .select("enrollmentNumber name email phone isRegistered createdAt")
       .lean(); // convert mongoose docs to plain objects for easy mapping
 
     // 🧠 Format enrollmentNumber here
     const formattedStudents = students.map((student) => ({
-      ...student,
       enrollmentNumber: student.enrollmentNumber.replace(/-/g, ""), // remove all "-"
+      name: student.name,
+      email: student.email,
+      phone: student.phone,
+      status: student.isRegistered,
+      createdAt: student.createdAt,
     }));
 
     // 3️⃣ Return results
     res.status(200).json({
       success: true,
-      count: students.length,
+      count: formattedStudents.length,
       division: {
         id: division._id,
         course: division.course,
         semester: division.semester,
         year: division.year,
       },
-      data: students,
+      data: formattedStudents,
     });
   } catch (err) {
     console.error("❌ Error fetching enrollments by division:", err.message);
@@ -2161,7 +2220,7 @@ export const updateGroupDetails = async (req, res) => {
           enrollmentId = member;
         } else if (member.enrollment || member.enrollmentNumber) {
           const enrollmentNum = member.enrollment || member.enrollmentNumber;
-          const enrollment = await Enrollment.findOne({
+          const enrollment = await Student.findOne({
             enrollmentNumber: enrollmentNum,
           });
           if (!enrollment) {
@@ -2195,7 +2254,7 @@ export const updateGroupDetails = async (req, res) => {
         });
       }
 
-      group.members = resolvedMembers;
+      group.students = resolvedMembers;
     }
 
     // 4️⃣ Update other fields if provided
@@ -2219,7 +2278,7 @@ export const updateGroupDetails = async (req, res) => {
     await group.populate([
       { path: "guide", select: "name email expertise mobile" },
       { path: "division", select: "course semester year" },
-      { path: "members", select: "name enrollmentNumber" },
+      { path: "students", select: "name enrollmentNumber" },
     ]);
 
     // 8️⃣ Send success response
@@ -2255,7 +2314,7 @@ export const getAllStudents = async (req, res) => {
 
     let students = await Student.find(filter)
       .populate("division", "course semester year")
-      .populate("group", "name projectTitle")
+    .populate("group", "name projectTitle")
       .select(
         "name enrollmentNumber email phone division group isRegistered isActive"
       )
@@ -2368,8 +2427,7 @@ export const getStudentById = async (req, res) => {
 
     const student = await Student.findById(id)
       .populate("division", "course semester year")
-      .populate("group", "name projectTitle")
-      .select("name enrollmentNumber email phone division group isRegistered")
+      .select("name enrollmentNumber email phone division isRegistered")
       .exec();
 
     if (!student) {
@@ -2435,7 +2493,6 @@ export const updateStudent = async (req, res) => {
 
     // Populate for response
     await student.populate("division", "course semester year");
-    await student.populate("group", "name projectTitle");
 
     res.status(200).json({
       success: true,

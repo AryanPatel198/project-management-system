@@ -1,47 +1,58 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, Users, MessageSquare, Bell, Calendar, User, 
-  Settings, LogOut, Key, BookOpen, Award, Clock, TrendingUp 
+import {
+  FileText, Users, MessageSquare, Bell, Calendar, User,
+  Settings, LogOut, Key, BookOpen, Award, Clock, TrendingUp
 } from 'lucide-react';
+import { studentProtectedAPI } from '../services/api';
 
 function StudentDashboard() {
   const navigate = useNavigate();
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [studentData, setStudentData] = useState(null);
+  const [inGroup, setInGroup] = useState(null);
+  const [group, setGroup] = useState(null);
   const settingsMenuRef = useRef(null);
   const settingsIconRef = useRef(null);
 
-  // Dummy data for dashboard stats
-  const dashboardStats = {
-    projectsSubmitted: 2,
-    pendingFeedback: 1,
-    groupMembers: 3,
-    upcomingExams: 2
-  };
+  // Get auth token
+  const getToken = () => localStorage.getItem('studentToken');
 
-  // Fetch student data on component mount
+  // Fetch student data and group status on component mount
   useEffect(() => {
-    // Simulate fetching student data (in real app, this would be an API call)
-    const fetchStudentData = async () => {
-      // Mock student data - replace with actual API call
-      const mockStudentData = {
-        name: "Aryan Patel",
-        enrollmentNumber: "ENR001",
-        department: "Computer Science",
-        semester: "3rd Semester",
-        email: "aaryan.patel@example.com",
-        phone: "+91 9876543210",
-        profileImage: null
-      };
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setStudentData(mockStudentData);
+    const fetchData = async () => {
+      try {
+        const token = getToken();
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        // Fetch student profile
+        try {
+          const profileData = await studentProtectedAPI.getProfile();
+          setStudentData(profileData);
+        } catch (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+
+        // Check group status
+        try {
+          const groupData = await studentProtectedAPI.checkGroup();
+          setInGroup(groupData.inGroup);
+          if (groupData.inGroup) {
+            setGroup(groupData.group);
+          }
+        } catch (groupError) {
+          console.error('Error fetching group status:', groupError);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
     };
 
-    fetchStudentData();
-  }, []);
+    fetchData();
+  }, [navigate]);
 
   // Close settings menu when clicking outside
   useEffect(() => {
@@ -69,6 +80,7 @@ function StudentDashboard() {
   const goToGuideDetails = () => navigate('/student/guide-details');
   const goToProfile = () => navigate('/student/profile');
   const goToGroupChat = () => navigate('/student/group-chat');
+  const goToCreateGroup = () => navigate('/student/create-group');
 
   const handleProfileSettings = () => {
     setIsSettingsMenuOpen(false);
@@ -116,6 +128,12 @@ function StudentDashboard() {
     </div>
   );
 
+  // If student is not in a group, redirect to create group
+  if (inGroup === false) {
+    navigate('/student/create-group');
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 font-sans">
       {/* Header */}
@@ -127,7 +145,7 @@ function StudentDashboard() {
               Project <span className="text-blue-400">Excellence</span>
             </h1>
           </div>
-          
+
           <div className="flex items-center space-x-6">
             <div className="text-right">
               <p className="text-white font-semibold">
@@ -137,7 +155,7 @@ function StudentDashboard() {
                 {studentData ? `${studentData.enrollmentNumber} - ${studentData.department}` : 'Loading...'}
               </p>
             </div>
-            
+
             <div className="relative">
               <Settings
                 ref={settingsIconRef}
@@ -194,34 +212,6 @@ function StudentDashboard() {
           <p className="text-white/70">Ready to continue your academic journey?</p>
         </div>
 
-       {/* Stats Grid
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <StatsCard 
-            icon={FileText} 
-            title="Projects Submitted" 
-            value={dashboardStats.projectsSubmitted} 
-            color="text-green-400" 
-          />
-          <StatsCard 
-            icon={MessageSquare} 
-            title="Pending Feedback" 
-            value={dashboardStats.pendingFeedback} 
-            color="text-yellow-400" 
-          />
-          <StatsCard 
-            icon={Users} 
-            title="Group Members" 
-            value={dashboardStats.groupMembers} 
-            color="text-blue-400" 
-          />
-          <StatsCard 
-            icon={Calendar} 
-            title="Upcoming Exams" 
-            value={dashboardStats.upcomingExams} 
-            color="text-purple-400" 
-          />
-        </div> */}
-
         {/* Quick Actions Grid */}
         <div className="mb-8">
           <h3 className="text-2xl font-bold text-white mb-6">Quick Actions</h3>
@@ -232,12 +222,6 @@ function StudentDashboard() {
                 title: 'Project Submission',
                 description: 'Submit your project work and documents',
                 onClick: goToProjectSubmission
-              },
-              {
-                icon: Users,
-                title: 'Group Management',
-                description: 'Manage your project team members',
-                onClick: goToGroupManagement
               },
               {
                 icon: MessageSquare,
@@ -282,24 +266,6 @@ function StudentDashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">
-          <h3 className="text-xl font-bold text-white mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 text-white/70">
-              <Clock size={16} />
-              <span>Project "E-Commerce Platform" submitted - 2 hours ago</span>
-            </div>
-            <div className="flex items-center space-x-3 text-white/70">
-              <Award size={16} />
-              <span>Received feedback from Dr. Smith - Yesterday</span>
-            </div>
-            <div className="flex items-center space-x-3 text-white/70">
-              <TrendingUp size={16} />
-              <span>Group meeting scheduled - Tomorrow 3 PM</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

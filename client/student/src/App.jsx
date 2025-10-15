@@ -15,6 +15,7 @@ import ExamSchedules from './pages/ExamSchedules.jsx';
 import GuideDetails from './pages/GuideDetails.jsx';
 import StudentProfile from './pages/StudentProfile.jsx';
 import GroupChat from './pages/GroupChat.jsx';
+import CreateGroup from './pages/CreateGroup.jsx';
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
         <Route path="/student/guide-details" element={<GuideDetails />} />
         <Route path="/student/profile" element={<StudentProfile />} />
         <Route path="/student/group-chat" element={<GroupChat />} />
+        <Route path="/student/create-group" element={<CreateGroup />} />
 
         {/* Optional: A catch-all route for 404 Not Found pages */}
         {/* <Route path="*" element={<NotFoundPage />} /> */}
