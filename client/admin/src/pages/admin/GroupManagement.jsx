@@ -196,45 +196,28 @@ function GroupManagement() {
 
   // Get available students for a group
   const getAvailableStudents = async () => {
-    if (
-      !selectedGroup ||
-      !selectedGroup.members ||
-      selectedGroup.members.length === 0 ||
-      !selectedGroup.divisionId
-    )
-      return [];
-    try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
-      const member = selectedGroup.members[0];
-      const groupCourse = member.className.split(" ")[0]; // From snapshot
-      const groupSemester = member.className.split(" ")[1];
-      const groupYear = selectedGroup.year;
+  if (!selectedGroup) return [];
+  try {
+    const headers = { Authorization: `Bearer ${adminToken}` };
 
-      const response = await axios.get(
-        `${API_BASE_URL}/admin/groups/${selectedGroup._id}/students/available`,
-        {
-          headers,
-          params: {
-            course: groupCourse,
-            semester: groupSemester,
-            year: groupYear,
-          },
-        }
-      );
+    const response = await axios.get(
+      `${API_BASE_URL}/admin/groups/${selectedGroup._id}/students/available`,
+      { headers }
+    );
 
-      // Assume response.data.data includes _id for students
-      return response.data.data || [];
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to fetch available students.";
-      setErrorMessage(errorMsg);
-      setTimeout(() => setErrorMessage(""), 3000);
-      console.error("Error fetching available students:", error);
-      return [];
-    }
-  };
+    return response.data.data || [];
+  } catch (error) {
+    const errorMsg =
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to fetch available students.";
+    setErrorMessage(errorMsg);
+    setTimeout(() => setErrorMessage(""), 3000);
+    console.error("Error fetching available students:", error);
+    return [];
+  }
+};
+
 
   // Handlers
   const handleBack = () => {

@@ -673,55 +673,55 @@ export const deleteGroup = async (req, res) => {
 export const getAvailableStudentsForGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { course, semester, year } = req.query;
 
-    if (!course || !semester || !year) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing division filters" });
+    // 1️⃣ Find the group with its division populated
+    const group = await Group.findById(id).populate("division");
+    if (!group || !group.division) {
+      return res.status(404).json({
+        success: false,
+        message: "Group or division not found",
+      });
     }
 
-    // Find all groups in the same division
-    const groupsInDivision = await Group.find({
-      "division.course": course,
-      "division.semester": Number(semester),
-      "division.year": Number(year),
+    const { course, semester, year } = group.division;
+
+    // 2️⃣ Find all groups in the same division
+    const groupsInSameDivision = await Group.find({
+      division: group.division._id,
     }).select("students");
 
-    // Get all student IDs already in groups in this division
-    const groupedStudentIds = groupsInDivision.flatMap(group => group.students.map(id => id.toString()));
+    // 3️⃣ Collect student IDs already assigned
+    const assignedIds = groupsInSameDivision.flatMap((g) =>
+      g.students.map((s) => s.toString())
+    );
 
-    // Find unassigned students in the same division
+    // 4️⃣ Fetch unassigned students from this same division
     const availableStudents = await Student.find({
-      _id: { $nin: groupedStudentIds },
-      "division.course": course,
-      "division.semester": Number(semester),
-      "division.year": Number(year),
+      _id: { $nin: assignedIds },
+      division: group.division._id,
     })
       .populate("division", "course semester year")
-      .select("name enrollmentNumber division")
-      .exec();
+      .select("name enrollmentNumber division");
 
     res.status(200).json({
       success: true,
       count: availableStudents.length,
       data: availableStudents.map((s) => ({
-        enrollmentNumber: s.enrollmentNumber,
+        _id: s._id,
         name: s.name,
-        className: `${s.division.course} ${s.division.semester}`,
+        enrollmentNumber: s.enrollmentNumber,
+        className: `${course} ${semester}`,
       })),
     });
   } catch (err) {
-    console.error(
-      "❌ Error fetching available students for group:",
-      err.message
-    );
+    console.error("❌ Error fetching available students:", err.message);
     res.status(500).json({
       success: false,
       message: "Server error while fetching available students",
     });
   }
 };
+
 
 // GET /api/admin/get-groups (with course, semester, year filters)
 export const getGroups = async (req, res) => {
