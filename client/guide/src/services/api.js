@@ -224,15 +224,27 @@ export const projectAPI = {
 // Guide Panel API - Merged from guidePanelAPI.js
 // Note: Based on backend routes, some endpoints may not be implemented yet
 export const guidePanelAPI = {
-  // Dashboard - Using guide profile endpoint as dashboard
+  // Dashboard - Fetch groups and announcements
   getDashboard: async () => {
-    // For now, return guide profile as dashboard data
-    const response = await authAPI.getGuideProfile();
-    return {
-      groups: [],
-      announcements: [],
-      profile: response
-    };
+    try {
+      const [groupsData, announcementsData] = await Promise.all([
+        guidePanelAPI.getGroups().catch(() => []),
+        guidePanelAPI.getCommunication({ type: 'announcement' }).catch(() => [])
+      ]);
+
+      return {
+        groups: groupsData || [],
+        announcements: announcementsData || [],
+        profile: null
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      return {
+        groups: [],
+        announcements: [],
+        profile: null
+      };
+    }
   },
 
   // Group Management - Using actual backend endpoints

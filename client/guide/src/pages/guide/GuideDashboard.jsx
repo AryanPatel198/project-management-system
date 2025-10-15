@@ -19,12 +19,39 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
+import { guidePanelAPI, authAPI } from "../../services/api";
 
 export default function GuideDashboard() {
   const navigate = useNavigate();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [assignedGroups, setAssignedGroups] = useState([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch dashboard data from API
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch dashboard data using the unified endpoint
+      const dashboardData = await guidePanelAPI.getDashboard();
+
+      setAssignedGroups(dashboardData.groups || []);
+      setRecentAnnouncements(dashboardData.announcements || []);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+      setAssignedGroups([]);
+      setRecentAnnouncements([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -32,14 +59,9 @@ export default function GuideDashboard() {
       setUser(JSON.parse(userData));
     }
 
-    // NOTE: Data fetching logic for assignedGroups and recentAnnouncements
-    // should be implemented here (e.g., using axios/fetch) and update the state.
-    // Example: fetchGuideDashboardData().then(data => { setAssignedGroups(data.groups); setRecentAnnouncements(data.announcements); });
+    // Fetch dashboard data
+    fetchDashboardData();
   }, []);
-
-  // Removed all mock data. Initial state for dynamic data is empty arrays.
-  const [assignedGroups, setAssignedGroups] = useState([]);
-  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
 
   // Mock data for dashboard
   /*
@@ -197,21 +219,80 @@ export default function GuideDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/");
   };
 
   // Calculations for Project Progress Overview (Handling empty array)
   const totalGroups = assignedGroups.length;
   const totalProgress = assignedGroups.reduce(
-    (acc, group) => acc + group.progress,
+    (acc, group) => acc + (group.progress || 0),
     0
   );
   const averageProgress =
     totalGroups > 0 ? Math.round(totalProgress / totalGroups) : 0;
-  const onTrackGroups = assignedGroups.filter((g) => g.progress >= 70).length;
+  const onTrackGroups = assignedGroups.filter((g) => (g.progress || 0) >= 70).length;
   const needsAttentionGroups = assignedGroups.filter(
-    (g) => g.progress < 50
+    (g) => (g.progress || 0) < 50
   ).length;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 font-sans">
+        <div className="sticky top-0 w-full bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-2xl z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              Guide Dashboard
+            </h1>
+          </div>
+        </div>
+        <div className="relative z-0 w-full max-w-7xl mx-auto px-4 sm:px-6 py-20">
+          <div className="flex flex-col items-center justify-center p-20 bg-white/5 rounded-3xl border border-white/20 shadow-2xl space-y-4">
+            <Loader2 size={48} className="text-purple-400 animate-spin" />
+            <p className="text-xl font-semibold text-white">
+              Loading Dashboard Data...
+            </p>
+            <p className="text-purple-200/70">
+              Please wait while we fetch the latest information.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 font-sans">
+        <div className="sticky top-0 w-full bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-2xl z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              Guide Dashboard
+            </h1>
+          </div>
+        </div>
+        <div className="relative z-0 w-full max-w-7xl mx-auto px-4 sm:px-6 py-20">
+          <div className="flex flex-col items-center justify-center p-20 bg-white/5 rounded-3xl border border-white/20 shadow-2xl space-y-4">
+            <XCircle size={48} className="text-red-400" />
+            <h2 className="text-2xl font-bold text-white">
+              Error Loading Dashboard
+            </h2>
+            <p className="text-purple-200/70 text-center">
+              {error}
+            </p>
+            <button
+              onClick={fetchDashboardData}
+              className="mt-4 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-xl transition-colors duration-300"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 font-sans">
@@ -239,6 +320,19 @@ export default function GuideDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Refresh Button */}
+              <button
+                onClick={fetchDashboardData}
+                disabled={loading}
+                className="group bg-white/10 text-white p-3 rounded-2xl border border-white/20 hover:bg-white/20 hover:border-purple-400/50 transition-all duration-300 shadow-lg hover:shadow-purple-500/25 disabled:opacity-50"
+                title="Refresh Dashboard"
+              >
+                <Clock
+                  size={20}
+                  className={`group-hover:scale-110 transition-transform ${loading ? 'animate-spin' : ''}`}
+                />
+              </button>
+
               {/* Notifications */}
               <div className="relative">
                 <button className="group bg-white/10 text-white p-3 rounded-2xl border border-white/20 hover:bg-white/20 hover:border-purple-400/50 transition-all duration-300 shadow-lg hover:shadow-purple-500/25">
@@ -408,78 +502,78 @@ export default function GuideDashboard() {
               </Link>
             </div>
 
-            <div className="space-y-6">
-              {/* Conditional rendering for empty state */}
-              {assignedGroups.length === 0 ? (
-                <div className="text-center py-10 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
-                  <AlertCircle
-                    size={24}
-                    className="mx-auto mb-3 text-purple-400"
-                  />
-                  <p>No assigned groups found.</p>
-                  <p className="text-sm mt-1">
-                    Please check your server connection or assignment status.
-                  </p>
-                </div>
-              ) : (
-                assignedGroups.map((group) => (
-                  <div
-                    key={group.id}
-                    className="group bg-white/10 p-6 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h4 className="font-bold text-white text-lg group-hover:text-purple-200 transition-colors">
-                          {group.groupName}
-                        </h4>
-                        <p className="text-purple-200/70 text-sm mt-1">
-                          {group.projectTitle}
-                        </p>
-                      </div>
-                      <span
-                        className={`px-4 py-2 rounded-full text-xs font-bold border ${getStatusColor(
-                          group.status
-                        )}`}
-                      >
-                        {group.status}
-                      </span>
-                    </div>
+             <div className="space-y-6">
+               {/* Conditional rendering for empty state */}
+               {assignedGroups.length === 0 ? (
+                 <div className="text-center py-10 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
+                   <AlertCircle
+                     size={24}
+                     className="mx-auto mb-3 text-purple-400"
+                   />
+                   <p>No assigned groups found.</p>
+                   <p className="text-sm mt-1">
+                     Please check your server connection or assignment status.
+                   </p>
+                 </div>
+               ) : (
+                 assignedGroups.map((group) => (
+                   <div
+                     key={group.id || group._id}
+                     className="group bg-white/10 p-6 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
+                   >
+                     <div className="flex items-start justify-between mb-4">
+                       <div>
+                         <h4 className="font-bold text-white text-lg group-hover:text-purple-200 transition-colors">
+                           {group.groupName || group.name || 'Unnamed Group'}
+                         </h4>
+                         <p className="text-purple-200/70 text-sm mt-1">
+                           {group.projectTitle || group.project || 'No project title'}
+                         </p>
+                       </div>
+                       <span
+                         className={`px-4 py-2 rounded-full text-xs font-bold border ${getStatusColor(
+                           group.status || 'In Progress'
+                         )}`}
+                       >
+                         {group.status || 'In Progress'}
+                       </span>
+                     </div>
 
-                    <div className="flex items-center justify-between text-sm mb-4">
-                      <span className="text-purple-200/70 font-medium">
-                        Progress:
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <div className="w-24 bg-white/10 rounded-full h-3 overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 ease-out"
-                            style={{ width: `${group.progress}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-white font-bold">
-                          {group.progress}%
-                        </span>
-                      </div>
-                    </div>
+                     <div className="flex items-center justify-between text-sm mb-4">
+                       <span className="text-purple-200/70 font-medium">
+                         Progress:
+                       </span>
+                       <div className="flex items-center gap-3">
+                         <div className="w-24 bg-white/10 rounded-full h-3 overflow-hidden">
+                           <div
+                             className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500 ease-out"
+                             style={{ width: `${group.progress || 0}%` }}
+                           ></div>
+                         </div>
+                         <span className="text-white font-bold">
+                           {group.progress || 0}%
+                         </span>
+                       </div>
+                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-purple-200/70" />
-                        <span className="text-purple-200/70">
-                          {group.members.length} members
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-purple-200/70" />
-                        <span className="text-purple-200/70">
-                          Next: {group.nextSeminar}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                     <div className="flex items-center justify-between text-sm">
+                       <div className="flex items-center gap-2">
+                         <Users size={16} className="text-purple-200/70" />
+                         <span className="text-purple-200/70">
+                           {group.members?.length || 0} members
+                         </span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                         <Calendar size={16} className="text-purple-200/70" />
+                         <span className="text-purple-200/70">
+                           Next: {group.nextSeminar || 'TBD'}
+                         </span>
+                       </div>
+                     </div>
+                   </div>
+                 ))
+               )}
+             </div>
           </div>
 
           {/* Recent Announcements & Seminars */}
@@ -500,54 +594,54 @@ export default function GuideDashboard() {
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {/* Conditional rendering for empty state */}
-                {recentAnnouncements.length === 0 ? (
-                  <div className="text-center py-6 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
-                    <AlertCircle
-                      size={20}
-                      className="mx-auto mb-2 text-purple-400"
-                    />
-                    <p className="text-sm">No recent announcements.</p>
-                  </div>
-                ) : (
-                  recentAnnouncements.map((announcement) => (
-                    <div
-                      key={announcement.id}
-                      className="group bg-white/10 p-4 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
-                            announcement.priority === "high"
-                              ? "bg-gradient-to-r from-red-400 to-pink-400"
-                              : announcement.priority === "medium"
-                              ? "bg-gradient-to-r from-orange-400 to-yellow-400"
-                              : "bg-gradient-to-r from-green-400 to-emerald-400"
-                          }`}
-                        ></div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-white text-sm group-hover:text-purple-200 transition-colors">
-                            {announcement.title}
-                          </h4>
-                          <p className="text-purple-200/70 text-xs mt-2 leading-relaxed">
-                            {announcement.content}
-                          </p>
-                          <div className="flex items-center gap-2 mt-3">
-                            <Calendar
-                              size={12}
-                              className="text-purple-200/50"
-                            />
-                            <p className="text-purple-200/50 text-xs">
-                              {announcement.date}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+               <div className="space-y-4">
+                 {/* Conditional rendering for empty state */}
+                 {recentAnnouncements.length === 0 ? (
+                   <div className="text-center py-6 text-purple-200/70 border border-dashed border-white/20 rounded-2xl">
+                     <AlertCircle
+                       size={20}
+                       className="mx-auto mb-2 text-purple-400"
+                     />
+                     <p className="text-sm">No recent announcements.</p>
+                   </div>
+                 ) : (
+                   recentAnnouncements.map((announcement) => (
+                     <div
+                       key={announcement.id || announcement._id}
+                       className="group bg-white/10 p-4 rounded-2xl border border-white/20 hover:border-purple-400/50 transition-all duration-300 hover:bg-white/15"
+                     >
+                       <div className="flex items-start gap-4">
+                         <div
+                           className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
+                             (announcement.priority || 'low') === "high"
+                               ? "bg-gradient-to-r from-red-400 to-pink-400"
+                               : (announcement.priority || 'low') === "medium"
+                               ? "bg-gradient-to-r from-orange-400 to-yellow-400"
+                               : "bg-gradient-to-r from-green-400 to-emerald-400"
+                           }`}
+                         ></div>
+                         <div className="flex-1">
+                           <h4 className="font-bold text-white text-sm group-hover:text-purple-200 transition-colors">
+                             {announcement.title || announcement.subject || 'Untitled Announcement'}
+                           </h4>
+                           <p className="text-purple-200/70 text-xs mt-2 leading-relaxed">
+                             {announcement.content || announcement.message || 'No content available'}
+                           </p>
+                           <div className="flex items-center gap-2 mt-3">
+                             <Calendar
+                               size={12}
+                               className="text-purple-200/50"
+                             />
+                             <p className="text-purple-200/50 text-xs">
+                               {announcement.date || announcement.createdAt || 'Unknown date'}
+                             </p>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   ))
+                 )}
+               </div>
             </div>
           </div>
         </div>
