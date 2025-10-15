@@ -2,10 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, Star, FileText, CheckCircle, Clock, AlertCircle, Download, Eye, Edit3 } from 'lucide-react';
+import { guidePanelAPI } from '../../services/api';
 
 export default function ProjectEvaluation() {
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [evaluationForm, setEvaluationForm] = useState({
     technicalScore: 0,
     presentationScore: 0,
@@ -15,45 +19,25 @@ export default function ProjectEvaluation() {
     status: 'pending'
   });
 
-  // Mock data for projects to evaluate
-  const [projects] = useState([
-    {
-      id: 'p1',
-      groupName: 'Alpha Team',
-      projectTitle: 'E-commerce Platform',
-      technology: 'MERN Stack',
-      submittedDate: '2024-01-20',
-      status: 'Under Review',
-      members: ['Ananya Sharma', 'Rahul Verma', 'Neha Singh'],
-      documents: ['Project Proposal.pdf', 'Technical Specs.docx', 'Demo Video.mp4'],
-      lastEvaluation: '2024-01-18',
-      progress: 85
-    },
-    {
-      id: 'p2',
-      groupName: 'Beta Squad',
-      projectTitle: 'Real-time Chat App',
-      technology: 'Flutter + Firebase',
-      submittedDate: '2024-01-19',
-      status: 'Pending Evaluation',
-      members: ['Vikram Rao', 'Priya Patel', 'Amit Kumar'],
-      documents: ['Project Report.pdf', 'Source Code.zip', 'User Manual.pdf'],
-      lastEvaluation: '2024-01-15',
-      progress: 70
-    },
-    {
-      id: 'p3',
-      groupName: 'Project Phoenix',
-      projectTitle: 'AI Recommendation System',
-      technology: 'Python + TensorFlow',
-      submittedDate: '2024-01-17',
-      status: 'Completed',
-      members: ['Sneha Desai', 'Rajesh Mehta', 'Pooja Joshi'],
-      documents: ['Final Report.pdf', 'Code Repository.zip', 'Presentation.pptx'],
-      lastEvaluation: '2024-01-20',
-      progress: 100
-    }
-  ]);
+  // Load projects on component mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        const projectData = await guidePanelAPI.getProjects();
+        setProjects(projectData || []);
+      } catch (err) {
+        console.error('Error loading projects:', err);
+        setError('Failed to load projects data');
+        // Fallback to empty array if API fails
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []);
 
   const [evaluationCriteria] = useState([
     {
@@ -105,19 +89,42 @@ export default function ProjectEvaluation() {
     }));
   };
 
-  const submitEvaluation = () => {
+  const submitEvaluation = async () => {
     if (selectedProject) {
-      // Mock submission
-      alert(`Evaluation submitted successfully for ${selectedProject.projectTitle}`);
-      setSelectedProject(null);
-      setEvaluationForm({
-        technicalScore: 0,
-        presentationScore: 0,
-        documentationScore: 0,
-        innovationScore: 0,
-        overallScore: 0,
-        status: 'completed'
-      });
+      try {
+        setLoading(true);
+        const evaluationData = {
+          projectId: selectedProject.id,
+          technicalScore: evaluationForm.technicalScore,
+          presentationScore: evaluationForm.presentationScore,
+          documentationScore: evaluationForm.documentationScore,
+          innovationScore: evaluationForm.innovationScore,
+          overallScore: evaluationForm.overallScore,
+          status: 'completed'
+        };
+
+        await guidePanelAPI.evaluateProject(selectedProject.id, evaluationData);
+        
+        // Reload projects after successful evaluation
+        const updatedProjects = await guidePanelAPI.getProjects();
+        setProjects(updatedProjects || []);
+
+        alert(`Evaluation submitted successfully for ${selectedProject.projectTitle}`);
+        setSelectedProject(null);
+        setEvaluationForm({
+          technicalScore: 0,
+          presentationScore: 0,
+          documentationScore: 0,
+          innovationScore: 0,
+          overallScore: 0,
+          status: 'completed'
+        });
+      } catch (err) {
+        console.error('Error submitting evaluation:', err);
+        alert('Failed to submit evaluation');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

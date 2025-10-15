@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Users, User, BookOpen, Code, Hash, Edit, X, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { guidePanelAPI } from '../../services/guidePanelAPI';
+import { guidePanelAPI } from '../../services/api';
 
 // Mock Data for Guide's Groups
 const guideGroups = [
