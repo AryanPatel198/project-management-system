@@ -366,21 +366,15 @@ export const guidePanelAPI = {
     return null;
   },
 
-  // Project Approval
+  // Project Approval (Not implemented in backend yet)
   getProjectApprovals: async (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
-    const response = await apiRequest(`/guide-panel/approvals?${queryString}`, {
-      method: 'GET',
-    });
-    return response.data;
+    console.warn('getProjectApprovals endpoint not implemented in backend yet');
+    return [];
   },
 
-  updateProjectApproval: async (groupId, { action, reason }) => {
-    const response = await apiRequest(`/guide-panel/approvals/${groupId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ action, reason }),
-    });
-    return response.data;
+  updateProjectApproval: async (projectId, approvalData) => {
+    console.warn('updateProjectApproval endpoint not implemented in backend yet');
+    return null;
   },
 
   // Feedback System (Not implemented in backend yet)

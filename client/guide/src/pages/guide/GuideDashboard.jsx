@@ -40,7 +40,7 @@ export default function GuideDashboard() {
 
       // Fetch dashboard data using the unified endpoint
       const dashboardData = await guidePanelAPI.getDashboard();
-
+      console.log(dashboardData);
       setAssignedGroups(dashboardData.groups || []);
       setRecentAnnouncements(dashboardData.announcements || []);
     } catch (err) {

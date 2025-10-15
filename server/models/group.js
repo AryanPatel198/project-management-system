@@ -12,7 +12,7 @@ const groupSchema = new mongoose.Schema(
     guide: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Guide",
-      required: false,
+      required: true,
     },
     division: {
       type: mongoose.Schema.Types.ObjectId,
@@ -58,19 +58,8 @@ const groupSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["Not Started", "In Progress", "Completed", "Approved", "Rejected"],
+      enum: ["Not Started", "In Progress", "Completed"],
       default: "Not Started",
-    },
-    rejectionReason: {
-      type: String,
-      maxlength: 1000,
-      trim: true,
-      default: "",
-    },
-    proposalPdf: {
-      type: String,
-      trim: true,
-      default: "",
     },
   },
   { timestamps: true }
