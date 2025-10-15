@@ -785,86 +785,128 @@ export const getGroups = async (req, res) => {
 };
 
 // Fix: PUT /api/admin/update-group/:id (handle guide change and members add/remove properly)
+// ✅ PUT /api/admin/update-group/:id
+// Add or remove students from group, and update membersSnapshot
 export const updateGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { guideId, addStudentIds, removeStudentId } = req.body; // Use IDs for accuracy
+    const { guideId, addStudentIds = [], removeStudentId } = req.body;
 
-    const group = await Group.findById(id).populate(
-      "students",
-      "name enrollmentNumber division"
-    );
+    // 1️⃣ Find the group and populate related data
+    const group = await Group.findById(id)
+      .populate("students", "name enrollmentNumber division")
+      .populate("division", "course semester year");
+
     if (!group) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Group not found" });
+      return res.status(404).json({ success: false, message: "Group not found" });
     }
 
-    // Change guide
+    // 2️⃣ Handle guide change
     if (guideId) {
       group.guide = guideId;
     }
 
-    // Add students (if provided; assumes addStudentIds is array of Student _ids)
-    if (addStudentIds && addStudentIds.length > 0) {
-      if (group.students.length + addStudentIds.length > 4) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Cannot exceed 4 members" });
+    // 3️⃣ Handle adding new students
+    if (Array.isArray(addStudentIds) && addStudentIds.length > 0) {
+      // Prevent duplicates
+      const currentIds = group.students.map((s) => s._id.toString());
+      const uniqueNewIds = addStudentIds.filter((id) => !currentIds.includes(id));
+
+      // Validate student existence
+      const newStudents = await Student.find({ _id: { $in: uniqueNewIds } })
+        .populate("division", "course semester");
+
+      // Limit total to 4 members
+      if (group.students.length + newStudents.length > 4) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot exceed 4 members in a group",
+        });
       }
-      const newStudents = await Student.find({ _id: { $in: addStudentIds } });
-      group.students.push(...addStudentIds);
+
+      // Add to group
+      group.students.push(...newStudents.map((s) => s._id));
+
+      // Add to membersSnapshot
       group.membersSnapshot.push(
         ...newStudents.map((s) => ({
           studentRef: s._id,
           enrollmentNumber: s.enrollmentNumber,
           name: s.name,
           joinedAt: new Date(),
-          // Store division snapshot for frontend
           divisionCourse: s.division.course,
           divisionSemester: s.division.semester,
         }))
       );
     }
 
-    // Remove student (if provided; removeStudentId is Student _id)
-    if (removeStudentId) {
-      if (group.students.length <= 3) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Minimum 3 members required" });
-      }
-      group.students = group.students.filter(
-        (sId) => sId.toString() !== removeStudentId
-      );
-      group.membersSnapshot = group.membersSnapshot.filter(
-        (ms) => ms.studentRef.toString() !== removeStudentId
-      );
-    }
+    // 4️⃣ Handle removing a student
 
+    // 4️⃣ Handle removing a student (handles ObjectId, object, or string)
+if (removeStudentId) {
+  const removeIdStr = removeStudentId.toString();
+  console.log("🧾 Removing student ID:", removeIdStr);
+
+  // 🔸 Normalize IDs before filtering
+  const normalizeId = (id) => {
+    if (!id) return null;
+    if (typeof id === "string") return id;
+    if (id._id) return id._id.toString();
+    return id.toString();
+  };
+
+  // 🔹 Filter from students array
+  const beforeStudents = group.students.length;
+  group.students = group.students.filter(
+    (sid) => normalizeId(sid) !== removeIdStr
+  );
+  console.log("📉 Students reduced:", beforeStudents, "→", group.students.length);
+
+  // 🔹 Filter from membersSnapshot
+  const beforeSnapshot = group.membersSnapshot.length;
+  group.membersSnapshot = group.membersSnapshot.filter(
+    (m) => normalizeId(m.studentRef) !== removeIdStr
+  );
+  console.log("📉 Snapshot reduced:", beforeSnapshot, "→", group.membersSnapshot.length);
+
+  // 🔹 Unlink student record
+  await Student.findByIdAndUpdate(removeStudentId, { group: null });
+}
+
+
+
+    // 5️⃣ Save changes
     await group.save();
     await group.populate("guide", "name email expertise phone");
     await group.populate("students", "name enrollmentNumber division");
 
+    // 6️⃣ Return updated group data
     res.status(200).json({
       success: true,
       message: "Group updated successfully",
       data: {
-        ...group.toObject(),
-        members: group.membersSnapshot.map((ms) => ({
-          name: ms.name,
-          enrollment: ms.enrollmentNumber,
-          className: `${ms.divisionCourse} ${ms.divisionSemester}`,
+        _id: group._id,
+        name: group.name,
+        guide: group.guide,
+        year: group.year,
+        projectTitle: group.projectTitle,
+        members: group.students.map((s) => ({
+          _id: s._id,
+          name: s.name,
+          enrollment: s.enrollmentNumber,
+          className: `${s.division.course} ${s.division.semester}`,
         })),
       },
     });
   } catch (err) {
     console.error("❌ Error updating group:", err.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error while updating group" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating group",
+    });
   }
 };
+
 
 export const updateGroupGuide = async (req, res) => {
   try {
