@@ -491,6 +491,11 @@ export const getGuideGroups = async (req, res) => {
       groupName: g.name,
       projectTitle: g.projectTitle || "",
       description: g.projectDescription || "",
+      technology: g.projectTechnology || "",
+      year: g.year,
+      course:
+        (Array.isArray(g.membersSnapshot) && g.membersSnapshot[0]?.divisionCourse) ||
+        null,
       maxMembers: g.membersSnapshot?.length || 0,
       currentMembers: (g.students || []).length,
       status: g.status,
@@ -500,6 +505,7 @@ export const getGuideGroups = async (req, res) => {
         id: s._id,
         name: s.name,
         email: s.email,
+        enrollmentNumber: s.enrollmentNumber,
       })),
     }));
 
@@ -584,6 +590,11 @@ export const getGroupByIdForGuide = async (req, res) => {
       groupName: group.name,
       projectTitle: group.projectTitle || "",
       description: group.projectDescription || "",
+      technology: group.projectTechnology || "",
+      year: group.year,
+      course:
+        (Array.isArray(group.membersSnapshot) && group.membersSnapshot[0]?.divisionCourse) ||
+        null,
       maxMembers: group.membersSnapshot?.length || 0,
       currentMembers: (group.students || []).length,
       status: group.status,
@@ -593,6 +604,7 @@ export const getGroupByIdForGuide = async (req, res) => {
         id: s._id,
         name: s.name,
         email: s.email,
+        enrollmentNumber: s.enrollmentNumber,
       })),
     };
 
@@ -735,13 +747,16 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
         .json({ success: false, message: "Group not found" });
     }
 
+    // --- START: Corrected Member Update Logic ---
     if (Array.isArray(members)) {
+      // 1. Member Count Validation
       if (members.length < 3 || members.length > 4) {
         return res
           .status(400)
           .json({ success: false, message: "Group must have 3-4 members" });
       }
-      // Validate students exist and are either unassigned or already in this group
+
+      // 2. Validate all students exist and fetch their current group status
       const students = await Student.find({ _id: { $in: members } });
       if (students.length !== members.length) {
         return res
@@ -749,14 +764,12 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
           .json({ success: false, message: "Invalid student list" });
       }
 
-      // Ensure students are not part of another group
-      const conflicting = await Student.find({
-        _id: { $in: members },
-        $and: [
-          { $or: [{ group: { $ne: null } }, { group: { $exists: true } }] },
-          { group: { $ne: group._id } },
-        ],
-      });
+      // 3. **CRITICAL FIX**: Ensure students are not assigned to *another* group.
+      // Filter for students whose 'group' field is set, AND that group ID is NOT the current group ID.
+      const conflicting = students.filter(
+        (s) => s.group && s.group.toString() !== group._id.toString()
+      );
+
       if (conflicting.length > 0) {
         return res.status(400).json({
           success: false,
@@ -764,13 +777,13 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
         });
       }
 
-      // Detach current students previously in this group but not in new list
+      // 4. Detach current students previously in this group but not in new list
       await Student.updateMany(
         { group: group._id, _id: { $nin: members } },
         { $set: { group: null } }
       );
 
-      // Attach new students to this group
+      // 5. Attach new/existing students to this group (safe because conflicts were checked)
       await Student.updateMany(
         { _id: { $in: members } },
         { $set: { group: group._id } }
@@ -784,7 +797,9 @@ export const updateGroupDetailsAndMembers = async (req, res) => {
         name: s.name,
       }));
     }
+    // --- END: Corrected Member Update Logic ---
 
+    // Update Project Details (regardless of member changes)
     if (projectTitle !== undefined) group.projectTitle = projectTitle;
     if (projectDescription !== undefined)
       group.projectDescription = projectDescription;
