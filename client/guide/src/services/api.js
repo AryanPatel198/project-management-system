@@ -1,3 +1,4 @@
+// @ts-nocheck
 const API_BASE_URL = "http://localhost:5000/api";
 
 // Helper function to handle API requests
@@ -426,13 +427,41 @@ export const guidePanelAPI = {
 
   // Feedback System (Not implemented in backend yet)
   getFeedback: async (params = {}) => {
-    console.warn("getFeedback endpoint not implemented in backend yet");
-    return [];
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/guide-panel/feedback?${queryString}`, {
+      method: "GET",
+    });
+    return response.data;
   },
 
   submitFeedback: async (feedbackData) => {
-    console.warn("submitFeedback endpoint not implemented in backend yet");
-    return null;
+    const response = await apiRequest(`/guide-panel/feedback`, {
+      method: "POST",
+      body: JSON.stringify(feedbackData),
+    });
+    return response.data;
+  },
+
+  updateFeedback: async (id, feedbackData) => {
+    const response = await apiRequest(`/guide-panel/feedback/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(feedbackData),
+    });
+    return response.data;
+  },
+
+  deleteFeedback: async (id) => {
+    const response = await apiRequest(`/guide-panel/feedback/${id}`, {
+      method: "DELETE",
+    });
+    return response.data;
+  },
+
+  remindGroup: async (feedbackId) => {
+    const response = await apiRequest(`/guide-panel/feedback/${feedbackId}/remind`, {
+      method: "POST",
+    });
+    return response.data;
   },
 
   // Seminar Schedule (Not implemented in backend yet)

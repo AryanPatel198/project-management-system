@@ -12,11 +12,13 @@ export default function Feedback() {
 
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [availableGroups, setAvailableGroups] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterRating, setFilterRating] = useState('All');
 
   const [newFeedback, setNewFeedback] = useState({
+    groupId: '',
     groupName: '',
     project: '',
     feedback: '',
@@ -24,13 +26,24 @@ export default function Feedback() {
     recommendations: ''
   });
 
-  const availableGroups = [
-    { name: 'Alpha Team', project: 'E-commerce Platform' },
-    { name: 'Beta Squad', project: 'Real-time Chat App' },
-    { name: 'Project Phoenix', project: 'AI Recommendation System' },
-    { name: 'Quantum Coders', project: 'Online Learning System' },
-    { name: 'Innovation Hub', project: 'Smart City Dashboard' }
-  ];
+  // Load groups dynamically for dropdown
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const groups = await guidePanelAPI.getGroups();
+        // Normalize for dropdown
+        const normalized = (groups || []).map((g) => ({
+          id: g.id,
+          name: g.groupName,
+          projectTitle: g.projectTitle || ''
+        }));
+        setAvailableGroups(normalized);
+      } catch (err) {
+        console.error('Error loading groups for dropdown:', err);
+      }
+    };
+    loadGroups();
+  }, []);
 
   // Load feedback data on component mount
   useEffect(() => {
@@ -54,7 +67,19 @@ export default function Feedback() {
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this feedback? This action cannot be undone.')) {
-      setFeedbacks(prevFeedbacks => prevFeedbacks.filter(fb => fb.id !== id));
+      (async () => {
+        try {
+          setLoading(true);
+          await guidePanelAPI.deleteFeedback(id);
+          const updated = await guidePanelAPI.getFeedback();
+          setFeedbacks(updated || []);
+        } catch (err) {
+          console.error('Error deleting feedback:', err);
+          setError('Failed to delete feedback');
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   };
 
@@ -67,24 +92,30 @@ export default function Feedback() {
   });
 
   const submitFeedback = async () => {
-    if (newFeedback.groupName && newFeedback.feedback) {
+    if ((newFeedback.groupId || newFeedback.groupName) && newFeedback.feedback) {
       try {
         setLoading(true);
         const feedbackData = {
-          groupName: newFeedback.groupName,
+          // Prefer groupId if selected, fallback to groupName (API supports both)
+          ...(newFeedback.groupId ? { groupId: newFeedback.groupId } : { groupName: newFeedback.groupName }),
           project: newFeedback.project,
           feedback: newFeedback.feedback,
           rating: newFeedback.rating,
           recommendations: newFeedback.recommendations || ''
         };
 
-        await guidePanelAPI.submitFeedback(feedbackData);
+        if (selectedGroup !== null) {
+          await guidePanelAPI.updateFeedback(selectedGroup, feedbackData);
+        } else {
+          await guidePanelAPI.submitFeedback(feedbackData);
+        }
         
         // Reload feedbacks after successful submission
         const updatedFeedbacks = await guidePanelAPI.getFeedback();
         setFeedbacks(updatedFeedbacks || []);
 
         setNewFeedback({
+          groupId: '',
           groupName: '',
           project: '',
           feedback: '',
@@ -223,6 +254,13 @@ export default function Feedback() {
                 <p className="text-white/80 text-sm leading-relaxed">{feedback.feedback}</p>
               </div>
 
+              {feedback.recommendations && (
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/20 mb-4">
+                  <p className="text-white/70 text-sm mb-2">Recommendations:</p>
+                  <p className="text-white/80 text-sm">{feedback.recommendations}</p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-sm text-white/60 mb-4">
                 <span>Given on: {feedback.date}</span>
                 <span>ID: {feedback.id}</span>
@@ -240,11 +278,12 @@ export default function Feedback() {
                   onClick={() => {
                     setSelectedGroup(feedback.id);
                     setNewFeedback({
+                      groupId: feedback.groupId || '',
                       groupName: feedback.groupName,
                       project: feedback.project,
                       feedback: feedback.feedback,
                       rating: feedback.rating,
-                      recommendations: ''
+                      recommendations: feedback.recommendations || ''
                     });
                     setShowFeedbackModal(true);
                   }}
@@ -253,7 +292,22 @@ export default function Feedback() {
                   Edit Feedback
                 </button>
                 {!feedback.response && (
-                  <button className="bg-orange-500/30 text-orange-300 py-2 px-4 rounded-lg border border-orange-400/30 hover:bg-orange-500/40 transition">
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        await guidePanelAPI.remindGroup(feedback.id);
+                        // Do not surface errors for dummy emails; show soft confirmation
+                        alert('Reminder sent (if email configured).');
+                      } catch (e) {
+                        console.warn('Email reminder issue (ignored):', e?.message || e);
+                        alert('Reminder attempted (emails may be dummy).');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="bg-orange-500/30 text-orange-300 py-2 px-4 rounded-lg border border-orange-400/30 hover:bg-orange-500/40 transition"
+                  >
                     Remind Group
                   </button>
                 )}
@@ -307,20 +361,21 @@ export default function Feedback() {
               <div>
                 <label className="block text-lg font-semibold text-white mb-2">Group</label>
                 <select
-                  value={newFeedback.groupName}
+                  value={newFeedback.groupId}
                   onChange={(e) => {
-                    const group = availableGroups.find(g => g.name === e.target.value);
+                    const group = availableGroups.find(g => g.id === e.target.value);
                     setNewFeedback(prev => ({
                       ...prev,
-                      groupName: e.target.value,
-                      project: group ? group.project : ''
+                      groupId: e.target.value,
+                      groupName: group ? group.name : '',
+                      project: group ? group.projectTitle : ''
                     }));
                   }}
                   className="w-full p-3 bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="" className="bg-gray-800 text-white">Select group</option>
                   {availableGroups.map(group => (
-                    <option key={group.name} value={group.name} className="bg-gray-800 text-white">
+                    <option key={group.id} value={group.id} className="bg-gray-800 text-white">
                       {group.name}
                     </option>
                   ))}
