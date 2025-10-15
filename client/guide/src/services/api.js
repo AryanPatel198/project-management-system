@@ -378,18 +378,26 @@ export const guidePanelAPI = {
 
   // Project Management (Not implemented in backend yet)
   getProjects: async (params = {}) => {
-    console.warn("getProjects endpoint not implemented in backend yet");
-    return [];
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiRequest(`/guide-panel/projects?${queryString}`, {
+      method: "GET",
+    });
+    return response.data;
   },
 
   getProjectDetails: async (projectId) => {
-    console.warn("getProjectDetails endpoint not implemented in backend yet");
-    return null;
+    const response = await apiRequest(`/guide-panel/groups/${projectId}`, {
+      method: "GET",
+    });
+    return response.data;
   },
 
   evaluateProject: async (projectId, evaluationData) => {
-    console.warn("evaluateProject endpoint not implemented in backend yet");
-    return null;
+    const response = await apiRequest(`/guide-panel/projects/${projectId}/evaluate`, {
+      method: "POST",
+      body: JSON.stringify(evaluationData),
+    });
+    return response.data;
   },
 
   // Project Approval (Not implemented in backend yet)

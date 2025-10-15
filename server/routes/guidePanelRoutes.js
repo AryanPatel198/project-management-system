@@ -8,6 +8,7 @@ import Group from "../models/group.js";
 import Student from "../models/student.js";
 import Feedback from "../models/feedback.js";
 import { sendEmail } from "../services/emailService.js";
+import GuideProjectEvaluation from "../models/guideProjectEvaluation.js";
 
 const router = express.Router();
 
@@ -37,6 +38,105 @@ router.get("/groups/:groupId", async (req, res) => {
   }
 });
 
+// --- Project Evaluation ---
+// GET /api/guide-panel/projects - list projects (groups) for current guide enriched with evaluation state
+router.get("/projects", async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const groups = await Group.find({ guide: guideId })
+      .populate("students", "name email")
+      .lean();
+
+    const groupIds = groups.map((g) => g._id);
+    const evaluations = await GuideProjectEvaluation.find({ guide: guideId, group: { $in: groupIds } })
+      .lean();
+    const evalMap = new Map(evaluations.map((e) => [e.group.toString(), e]));
+
+    const data = groups.map((g) => {
+      const e = evalMap.get(g._id.toString());
+      return {
+        id: g._id,
+        groupName: g.name,
+        projectTitle: g.projectTitle || "",
+        technology: g.projectTechnology || "",
+        status: e?.status || "Pending Evaluation",
+        progress: 0,
+        submittedDate: g.createdAt?.toISOString?.().split("T")[0] || null,
+        lastEvaluation: e?.lastEvaluatedAt ? new Date(e.lastEvaluatedAt).toISOString().split("T")[0] : null,
+        documents: ["Proposal.pdf", "Design.docx"],
+        members: (g.students || []).map((s) => s.name),
+        evaluation: e
+          ? {
+              technicalScore: e.technicalScore || 0,
+              presentationScore: e.presentationScore || 0,
+              documentationScore: e.documentationScore || 0,
+              innovationScore: e.innovationScore || 0,
+              overallScore: e.overallScore || 0,
+            }
+          : null,
+      };
+    });
+
+    return res.status(200).json({ data });
+  } catch (error) {
+    console.error("Error listing projects:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// POST /api/guide-panel/projects/:groupId/evaluate - create or update evaluation for a group
+router.post("/projects/:groupId/evaluate", async (req, res) => {
+  try {
+    const guideId = req.guide._id.toString();
+    const { groupId } = req.params;
+    const {
+      technicalScore = 0,
+      presentationScore = 0,
+      documentationScore = 0,
+      innovationScore = 0,
+      overallScore = 0,
+      status = "Completed",
+    } = req.body || {};
+
+    const group = await Group.findOne({ _id: groupId, guide: guideId });
+    if (!group) {
+      return res.status(404).json({ success: false, message: "Group not found" });
+    }
+
+    const updated = await GuideProjectEvaluation.findOneAndUpdate(
+      { group: groupId, guide: guideId },
+      {
+        $set: {
+          technicalScore,
+          presentationScore,
+          documentationScore,
+          innovationScore,
+          overallScore,
+          status,
+          lastEvaluatedAt: new Date(),
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    return res.status(200).json({
+      data: {
+        id: updated._id,
+        groupId: group._id,
+        status: updated.status,
+        technicalScore: updated.technicalScore,
+        presentationScore: updated.presentationScore,
+        documentationScore: updated.documentationScore,
+        innovationScore: updated.innovationScore,
+        overallScore: updated.overallScore,
+        lastEvaluatedAt: updated.lastEvaluatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error saving evaluation:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 // PUT /api/guide-panel/groups/:groupId/details - update project details and members
 router.put("/groups/:groupId/details", async (req, res) => {
   try {
